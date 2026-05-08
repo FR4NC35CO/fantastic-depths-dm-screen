@@ -343,7 +343,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     );
     
     const seguaciFolder = game.folders?.find(f => 
-      f.type === 'Actor' && f.name.toLowerCase() === 'seguaci'
+      f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name)
     );
     
     const partyActors = partyFolder ? game.actors.contents
@@ -1150,7 +1150,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Collect party actors (including seguaci)
     const partyFolder   = game.folders?.find(f => f.type === 'Actor' && f.name.toLowerCase() === 'party');
-    const seguaciFolder = game.folders?.find(f => f.type === 'Actor' && f.name.toLowerCase() === 'seguaci');
+    const seguaciFolder = game.folders?.find(f => f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name));
     const actors = [
       ...(partyFolder   ? game.actors.filter(a => a.type === 'character' && partyFolder.contents?.some(c => c.id === a.id))   : game.actors.filter(a => a.type === 'character')),
       ...(seguaciFolder ? game.actors.filter(a => a.type === 'character' && seguaciFolder.contents?.some(c => c.id === a.id)) : [])
@@ -1184,7 +1184,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const el = this.element;
     if (!el) return;
     const partyFolder   = game.folders?.find(f => f.type === 'Actor' && f.name.toLowerCase() === 'party');
-    const seguaciFolder = game.folders?.find(f => f.type === 'Actor' && f.name.toLowerCase() === 'seguaci');
+    const seguaciFolder = game.folders?.find(f => f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name));
     const partyActors = [
       ...(partyFolder   ? game.actors.filter(a => a.type === 'character' && partyFolder.contents?.some(c => c.id === a.id))   : game.actors?.filter(a => a.type === 'character') ?? []),
       ...(seguaciFolder ? game.actors.filter(a => a.type === 'character' && seguaciFolder.contents?.some(c => c.id === a.id)) : [])

@@ -1397,8 +1397,11 @@ async function preloadTemplates() {
   return loadFn(templatePaths);
 }
 
-// Ensure Party and Seguaci folders exist - Assicura che le cartelle Party e Seguaci esistano
+// Ensure Party and Seguaci/Retainers folders exist - Assicura che le cartelle Party e Seguaci/Retainers esistano
 async function ensureFolders() {
+  const isItalian = (game.i18n.lang ?? 'en') === 'it';
+  const retainerFolderName = isItalian ? 'Seguaci' : 'Retainers';
+
   // Party folder
   let partyFolder = game.folders?.find(f => 
     f.type === 'Actor' && f.name.toLowerCase() === 'party'
@@ -1410,21 +1413,26 @@ async function ensureFolders() {
       type: 'Actor',
       parent: null
     });
-    ui.notifications.info('PG + PX Manager: Cartella "Party" creata.');
+    ui.notifications.info(game.i18n.format('NOTIFY.FolderCreated', { name: 'Party' }));
   }
   
-  // Seguaci folder
+  // Retainers/Seguaci folder
   let seguaciFolder = game.folders?.find(f => 
-    f.type === 'Actor' && f.name.toLowerCase() === 'seguaci'
+    f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name)
   );
   
+  console.log(`[fantastic-depths-dm-screen] ensureFolders | lang=${game.i18n.lang} | targetName=${retainerFolderName} | found=${seguaciFolder?.name ?? 'NONE'} | isGM=${game.user.isGM}`);
+
   if (!seguaciFolder && game.user.isGM) {
     seguaciFolder = await Folder.create({
-      name: 'Seguaci',
+      name: retainerFolderName,
       type: 'Actor',
       parent: null
     });
-    ui.notifications.info('PG + PX Manager: Cartella "Seguaci" creata.');
+    ui.notifications.info(game.i18n.format('NOTIFY.FolderCreated', { name: retainerFolderName }));
+  } else if (seguaciFolder && game.user.isGM && seguaciFolder.name !== retainerFolderName) {
+    console.log(`[fantastic-depths-dm-screen] Renaming "${seguaciFolder.name}" → "${retainerFolderName}"`);
+    await seguaciFolder.update({ name: retainerFolderName });
   }
 }
 

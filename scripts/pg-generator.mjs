@@ -331,7 +331,8 @@ export class PGGenerator {
     // Determine folder: only Friendly disposition goes into Party/Seguaci folders
     let targetFolder = null;
     if (disposition === 1) {
-      const folderName = folder || (isRetainer ? 'Seguaci' : 'Party');
+      const isItalian = (game.i18n.lang ?? 'en') === 'it';
+      const folderName = folder || (isRetainer ? (isItalian ? 'Seguaci' : 'Retainers') : 'Party');
       targetFolder = await this._getOrCreateFolder(folderName);
     }
     
