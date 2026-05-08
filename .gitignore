@@ -9,3 +9,6 @@ Thumbs.db
 # Editor
 .vscode/
 .windsurf/
+
+# Dev notes (not needed for module functionality)
+monster-name-table.md
