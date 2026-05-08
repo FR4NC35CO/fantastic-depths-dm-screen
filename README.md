@@ -23,13 +23,13 @@ Foundry VTT module for Party management, Experience Points (XP) distribution, En
 2. Click **Install Module**
 3. Enter this URL in the **Manifest URL** field:
    ```
-   https://github.com/fr4nc35c0/fantastic-depths-dm-screen/releases/download/latest/module.json
+   https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/download/latest/module.json
    ```
 4. Click **Install**
 
 #### Method 2: Manual
 
-1. Download the `.zip` file from the [Releases](https://github.com/fr4nc35c0/fantastic-depths-dm-screen/releases) section
+1. Download the `.zip` file from the [Releases](https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases) section
 2. Extract to the `Data/modules/` folder of Foundry VTT
 3. Rename the folder to `fantastic-depths-dm-screen`
 4. Restart Foundry VTT
@@ -121,7 +121,7 @@ On first launch, the module will automatically create the necessary folders:
 ### Support
 
 For bugs, suggestions, or support:
-- Open an issue on [GitHub](https://github.com/fr4nc35c0/fantastic-depths-dm-screen/issues)
+- Open an issue on [GitHub](https://github.com/FR4NC35CO/fantastic-depths-dm-screen/issues)
 - Discord: FR4NC35C0
 
 ### Credits
@@ -159,13 +159,13 @@ Modulo Foundry VTT per la gestione del Party, distribuzione di Punti Esperienza 
 2. Clicca **Install Module**
 3. Inserisci questo URL nel campo **Manifest URL**:
    ```
-   https://github.com/fr4nc35c0/fantastic-depths-dm-screen/releases/download/latest/module.json
+   https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/download/latest/module.json
    ```
 4. Clicca **Install**
 
 #### Metodo 2: Manuale
 
-1. Scarica il file `.zip` dalla sezione [Releases](https://github.com/fr4nc35c0/fantastic-depths-dm-screen/releases)
+1. Scarica il file `.zip` dalla sezione [Releases](https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases)
 2. Estrai nella cartella `Data/modules/` di Foundry VTT
 3. Rinomina la cartella in `fantastic-depths-dm-screen`
 4. Riavvia Foundry VTT
@@ -256,7 +256,7 @@ Al primo avvio, il modulo creerà automaticamente le cartelle necessarie:
 ### Supporto
 
 Per bug, suggerimenti o supporto:
-- Apri una issue su [GitHub](https://github.com/fr4nc35c0/fantastic-depths-dm-screen/issues)
+- Apri una issue su [GitHub](https://github.com/FR4NC35CO/fantastic-depths-dm-screen/issues)
 - Discord: FR4NC35C0
 
 ### Crediti
