@@ -1,0 +1,170 @@
+{{!-- Character Generator Tab Template - PG al Volo Complete --}}
+<div class="pg-generator-section">
+  <form id="pg-generator-form">
+    
+    {{!-- Stats Grid with Triangle Buttons --}}
+    <div class="gen-stats-grid">
+      {{#each stats as |stat|}}
+      <div class="gen-stat-box" data-stat="{{stat.key}}">
+        <span class="gen-stat-label" id="stat-label-{{stat.key}}" data-tooltip="{{stat.full}}">{{stat.label}}</span>
+        <button type="button" class="gen-stat-btn gen-stat-plus icon-only triangle-btn" data-stat="{{stat.key}}" data-action="increaseStat" disabled>▲</button>
+        <div class="gen-stat-input-wrap">
+          <input type="number" name="stat-{{stat.key}}" id="stat-{{stat.key}}" class="gen-stat-input" value="" min="3" max="18" placeholder="--" />
+          <span class="gen-stat-mod" id="stat-mod-{{stat.key}}"></span>
+        </div>
+        <button type="button" class="gen-stat-btn gen-stat-minus icon-only triangle-btn" data-stat="{{stat.key}}" data-action="decreaseStat" disabled>▼</button>
+      </div>
+      {{/each}}
+    </div>
+    
+    {{!-- Dice Roll Buttons, Reserve Points & Reset --}}
+    <div class="gen-reserve-row">
+      <button type="button" data-action="rollStats3d6" class="gen-roll-btn-small">
+        <i class="fas fa-dice"></i> {{localize 'GENERATOR.RollStats3d6'}}
+      </button>
+      <button type="button" data-action="rollStats4d6" class="gen-roll-btn-small" data-tooltip="{{localize 'GENERATOR.Tooltip.Roll4d6'}}">
+        <i class="fas fa-dice"></i> {{localize 'GENERATOR.RollStats4d6'}}
+      </button>
+      <div class="gen-reserve-wrap">
+        <input type="number" name="riserva-points" id="riserva-points" value="0" readonly data-tooltip="{{localize 'GENERATOR.Riserva'}}" />
+        <button type="button" data-action="resetRiserva" class="gen-reset-riserva" data-tooltip="{{localize 'GENERATOR.ResetRiserva'}}">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <button type="button" data-action="resetStats" class="gen-reset-btn-small">
+        <i class="fas fa-eraser"></i> {{localize 'GENERATOR.ResetStats'}}
+      </button>
+    </div>
+    
+    <hr class="gen-divider" />
+    
+    {{!-- Name, Sex and Retainer --}}
+    <div class="gen-form-row gen-flex-row" style="margin-bottom: 8px; align-items: flex-end;">
+      <div class="gen-field-half">
+        <label for="char-name">{{localize 'GENERATOR.NameFullLabel'}}</label>
+        <input type="text" name="char-name" id="char-name" placeholder="  {{localize 'GENERATOR.NameInputHint'}}" />
+      </div>
+      <div class="gen-field-auto gen-sex-col">
+        <label>&nbsp;</label>
+        <div class="gen-sex-checkboxes">
+          <label class="gen-sex-label" data-tooltip="{{localize 'GENERATOR.Sex.Male'}}">
+            <input type="radio" name="char-sex" value="M" id="char-sex-m" />
+            <i class="fas fa-mars"></i> {{localize 'GENERATOR.Sex.MaleShort'}}
+          </label>
+          <label class="gen-sex-label" data-tooltip="{{localize 'GENERATOR.Sex.Female'}}">
+            <input type="radio" name="char-sex" value="F" id="char-sex-f" />
+            <i class="fas fa-venus"></i> {{localize 'GENERATOR.Sex.FemaleShort'}}
+          </label>
+        </div>
+      </div>
+      <div class="gen-field-auto gen-retainer-col" style="display: flex; align-items: center; padding-bottom: 4px;">
+        <label class="gen-checkbox-label">
+          <input type="checkbox" name="char-is-retainer" id="char-is-retainer" />
+          <span>{{localize 'GENERATOR.Retainer'}}</span>
+        </label>
+      </div>
+    </div>
+    
+    {{!-- Class, Level, Height & Alignment in one row --}}
+    <div class="gen-form-row gen-flex-row">
+      <div class="gen-field-fourth">
+        <label for="char-class">{{localize 'GENERATOR.Class'}}</label>
+        <select name="char-class" id="char-class">
+          <option value="__RANDOM__" selected>{{localize 'GENERATOR.Random'}}</option>
+          {{#each nonDragonClasses as |cls|}}
+          <option value="{{cls.id}}">{{cls.name}}</option>
+          {{/each}}
+          <option disabled>──────────────</option>
+          {{#each dragonClasses as |cls|}}
+          <option value="{{cls.id}}">{{cls.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="gen-field-fourth">
+        <label for="char-level-select">{{localize 'GENERATOR.Level'}}</label>
+        <select name="char-level-select" id="char-level-select">
+          <option value="__RANDOM__" selected>{{localize 'GENERATOR.Random'}}</option>
+          {{#each levelOptions as |lvl|}}
+          <option value="{{lvl}}">{{lvl}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="gen-field-fourth">
+        <label for="char-height">{{localize 'GENERATOR.Height'}}</label>
+        <select name="char-height" id="char-height">
+          <option value="__RANDOM__" selected>{{localize 'GENERATOR.Random'}}</option>
+          <optgroup label="{{localize 'GENERATOR.HeightHuman'}}" class="height-human">
+            <option value="4'10"|human">4'10"</option>
+            <option value="5'0"|human">5'0"</option>
+            <option value="5'2"|human">5'2"</option>
+            <option value="5'4"|human">5'4"</option>
+            <option value="5'6"|human">5'6"</option>
+            <option value="5'8"|human">5'8"</option>
+            <option value="5'10"|human">5'10"</option>
+            <option value="6'0"|human">6'0"</option>
+            <option value="6'2"|human">6'2"</option>
+            <option value="6'4"|human">6'4"</option>
+          </optgroup>
+          <optgroup label="{{localize 'GENERATOR.HeightDwarf'}}" class="height-dwarf">
+            <option value="3'8"|dwarf">3'8"</option>
+            <option value="3'10"|dwarf">3'10"</option>
+            <option value="4'0"|dwarf">4'0"</option>
+            <option value="4'2"|dwarf">4'2"</option>
+            <option value="4'4"|dwarf">4'4"</option>
+          </optgroup>
+          <optgroup label="{{localize 'GENERATOR.HeightElf'}}" class="height-elf">
+            <option value="4'8"|elf">4'8"</option>
+            <option value="5'0"|elf">5'0"</option>
+            <option value="5'2"|elf">5'2"</option>
+            <option value="5'4"|elf">5'4"</option>
+            <option value="5'6"|elf">5'6"</option>
+            <option value="5'8"|elf">5'8"</option>
+          </optgroup>
+          <optgroup label="{{localize 'GENERATOR.HeightHalfling'}}" class="height-halfling">
+            <option value="2'10"|halfling">2'10"</option>
+            <option value="3'0"|halfling">3'0"</option>
+            <option value="3'2"|halfling">3'2"</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="gen-field-fourth">
+        <label for="char-alignment">{{localize 'GENERATOR.Alignment'}}</label>
+        <select name="char-alignment" id="char-alignment">
+          <option value="__RANDOM__" selected>{{localize 'GENERATOR.Random'}}</option>
+          <option value="Lawful">{{localize 'ALIGNMENT.Lawful'}}</option>
+          <option value="Neutral">{{localize 'ALIGNMENT.Neutral'}}</option>
+          <option value="Chaotic">{{localize 'ALIGNMENT.Chaotic'}}</option>
+        </select>
+      </div>
+    </div>
+    
+    {{!-- Equipment, Retainer & Create Button in one row --}}
+    <div class="gen-form-row gen-flex-row">
+      <div class="gen-field-half">
+        <label for="char-equipment">{{localize 'GENERATOR.Equipment'}}</label>
+        <select name="char-equipment" id="char-equipment">
+          <option value="__GOLD_START__">{{localize 'GENERATOR.Equip.GoldStart'}}</option>
+          <option value="__RANDOM__">{{localize 'GENERATOR.Equip.Random'}}</option>
+          <option value="__CLASS_KIT__" id="class-kit-option" selected>{{localize 'GENERATOR.Equip.ClassKit'}}</option>
+          <option value="__NONE__">{{localize 'GENERATOR.Equip.None'}}</option>
+        </select>
+      </div>
+      <div class="gen-field-fourth">
+        <label for="char-disposition">{{localize 'GENERATOR.DispositionLabel'}}</label>
+        <select name="char-disposition" id="char-disposition">
+          <option value="1" selected>{{localize 'GENERATOR.DispositionFriendly'}}</option>
+          <option value="0">{{localize 'GENERATOR.DispositionNeutral'}}</option>
+          <option value="-1">{{localize 'GENERATOR.DispositionHostile'}}</option>
+          <option value="-2">{{localize 'GENERATOR.DispositionSecret'}}</option>
+        </select>
+      </div>
+      <div class="gen-field-auto gen-create-col">
+        <label>&nbsp;</label>
+        <button type="button" data-action="generateCharacter" class="gen-create-btn" data-tooltip="{{localize 'GENERATOR.Tooltip.Create'}}">
+          <i class="fas fa-user-plus"></i> {{localize 'GENERATOR.Button.Create'}}
+        </button>
+      </div>
+    </div>
+    
+  </form>
+</div>

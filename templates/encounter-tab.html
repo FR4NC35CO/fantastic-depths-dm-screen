@@ -1,0 +1,170 @@
+{{!-- Encounter Generator Tab Template --}}
+<div class="encounter-section">
+
+  {{!-- Controls Row 1: Challenge · Type · Location --}}
+  <div class="enc-controls-row">
+
+    {{!-- Challenge Level --}}
+    <div class="enc-field">
+      <label for="enc-challenge">{{localize 'ENCOUNTER.ChallengeLabel'}}</label>
+      <select id="enc-challenge" name="enc-challenge">
+        <option value="random">{{localize 'ENCOUNTER.Random'}}</option>
+        <option value="too-easy">{{localize 'ENCOUNTER.TooEasy'}}</option>
+        <option value="minor">{{localize 'ENCOUNTER.Minor'}}</option>
+        <option value="distraction">{{localize 'ENCOUNTER.Distraction'}}</option>
+        <option value="good-fight" selected>{{localize 'ENCOUNTER.GoodFight'}}</option>
+        <option value="challenging">{{localize 'ENCOUNTER.Challenging'}}</option>
+        <option value="major">{{localize 'ENCOUNTER.Major'}}</option>
+        <option value="risky">{{localize 'ENCOUNTER.Risky'}}</option>
+        <option value="extremely-dangerous">{{localize 'ENCOUNTER.ExtremelyDangerous'}}</option>
+      </select>
+    </div>
+
+    {{!-- Location --}}
+    <div class="enc-field">
+      <label for="enc-location">{{localize 'ENCOUNTER.LocationLabel'}}</label>
+      <select id="enc-location" name="enc-location">
+        <option value="random" selected>{{localize 'ENCOUNTER.RandomOption'}}</option>
+        <option value="any-only">{{localize 'ENCOUNTER.AnyOnly'}}</option>
+        <option value="arctic">{{localize 'ENCOUNTER.Arctic'}}</option>
+        <option value="barren-lands">{{localize 'ENCOUNTER.BarrenLands'}}</option>
+        <option value="beach">{{localize 'ENCOUNTER.Beach'}}</option>
+        <option value="castle">{{localize 'ENCOUNTER.Castle'}}</option>
+        <option value="cavern">{{localize 'ENCOUNTER.Cavern'}}</option>
+        <option value="city">{{localize 'ENCOUNTER.City'}}</option>
+        <option value="coast">{{localize 'ENCOUNTER.Coast'}}</option>
+        <option value="cursed-lands">{{localize 'ENCOUNTER.CursedLands'}}</option>
+        <option value="deep-forest">{{localize 'ENCOUNTER.DeepForest'}}</option>
+        <option value="deep-sea">{{localize 'ENCOUNTER.DeepSea'}}</option>
+        <option value="desert">{{localize 'ENCOUNTER.Desert'}}</option>
+        <option value="dungeon-1">{{localize 'ENCOUNTER.DungeonLevel1'}}</option>
+        <option value="dungeon-2">{{localize 'ENCOUNTER.DungeonLevel2'}}</option>
+        <option value="dungeon-3">{{localize 'ENCOUNTER.DungeonLevel3'}}</option>
+        <option value="dungeon-4-5">{{localize 'ENCOUNTER.DungeonLevel45'}}</option>
+        <option value="dungeon-6-7">{{localize 'ENCOUNTER.DungeonLevel67'}}</option>
+        <option value="dungeon-8-10">{{localize 'ENCOUNTER.DungeonLevel810'}}</option>
+        <option value="elemental-air">{{localize 'ENCOUNTER.ElementalAir'}}</option>
+        <option value="elemental-earth">{{localize 'ENCOUNTER.ElementalEarth'}}</option>
+        <option value="elemental-fire">{{localize 'ENCOUNTER.ElementalFire'}}</option>
+        <option value="elemental-water">{{localize 'ENCOUNTER.ElementalWater'}}</option>
+        <option value="forest">{{localize 'ENCOUNTER.Forest'}}</option>
+        <option value="grassland">{{localize 'ENCOUNTER.Grassland'}}</option>
+        <option value="graveyard">{{localize 'ENCOUNTER.Graveyard'}}</option>
+        <option value="hills">{{localize 'ENCOUNTER.Hills'}}</option>
+        <option value="jungle">{{localize 'ENCOUNTER.Jungle'}}</option>
+        <option value="lake">{{localize 'ENCOUNTER.Lake'}}</option>
+        <option value="marsh">{{localize 'ENCOUNTER.Marsh'}}</option>
+        <option value="moors">{{localize 'ENCOUNTER.Moors'}}</option>
+        <option value="mountains">{{localize 'ENCOUNTER.Mountains'}}</option>
+        <option value="ocean">{{localize 'ENCOUNTER.Ocean'}}</option>
+        <option value="open">{{localize 'ENCOUNTER.Open'}}</option>
+        <option value="plains">{{localize 'ENCOUNTER.Plains'}}</option>
+        <option value="river">{{localize 'ENCOUNTER.River'}}</option>
+        <option value="ruins">{{localize 'ENCOUNTER.Ruins'}}</option>
+        <option value="savanna">{{localize 'ENCOUNTER.Savanna'}}</option>
+        <option value="sea">{{localize 'ENCOUNTER.Sea'}}</option>
+        <option value="settled">{{localize 'ENCOUNTER.Settled'}}</option>
+        <option value="snow">{{localize 'ENCOUNTER.Snow'}}</option>
+        <option value="steppe">{{localize 'ENCOUNTER.Steppe'}}</option>
+        <option value="swamp">{{localize 'ENCOUNTER.Swamp'}}</option>
+        <option value="tundra">{{localize 'ENCOUNTER.Tundra'}}</option>
+        <option value="underground">{{localize 'ENCOUNTER.Underground'}}</option>
+        <option value="urban">{{localize 'ENCOUNTER.Urban'}}</option>
+        <option value="variable">{{localize 'ENCOUNTER.Variable'}}</option>
+        <option value="village">{{localize 'ENCOUNTER.Village'}}</option>
+        <option value="wasteland">{{localize 'ENCOUNTER.Wasteland'}}</option>
+        <option value="wilderness">{{localize 'ENCOUNTER.Wilderness'}}</option>
+        <option value="woods">{{localize 'ENCOUNTER.Woods'}}</option>
+      </select>
+    </div>
+
+    {{!-- Monster Type --}}
+    <div class="enc-field">
+      <label for="enc-monster-type">{{localize 'ENCOUNTER.TypeLabel'}}</label>
+      <select id="enc-monster-type" name="enc-monster-type">
+        <option value="random">{{localize 'ENCOUNTER.RandomOption'}}</option>
+      </select>
+    </div>
+
+  </div>
+
+  {{!-- Controls Row 2: Groups · Rarity · Numbers --}}
+  <div class="enc-controls-row">
+
+    {{!-- Groups --}}
+    <div class="enc-field">
+      <label for="enc-groups">{{localize 'ENCOUNTER.GroupsLabel'}}</label>
+      <select id="enc-groups" name="enc-groups">
+        <option value="1">{{localize 'ENCOUNTER.Single'}}</option>
+        <option value="2">{{localize 'ENCOUNTER.Mixed2'}}</option>
+        <option value="3">{{localize 'ENCOUNTER.Mixed3'}}</option>
+      </select>
+    </div>
+
+    {{!-- Rarity --}}
+    <div class="enc-field">
+      <label for="enc-rarity">{{localize 'ENCOUNTER.RarityLabel'}}</label>
+      <select id="enc-rarity" name="enc-rarity">
+        <option value="random">{{localize 'ENCOUNTER.RandomOption'}}</option>
+        <option value="Common">{{localize 'ENCOUNTER.Common'}}</option>
+        <option value="Uncommon">{{localize 'ENCOUNTER.Uncommon'}}</option>
+        <option value="Rare">{{localize 'ENCOUNTER.Rare'}}</option>
+        <option value="Very Rare">{{localize 'ENCOUNTER.VeryRare'}}</option>
+        <option value="Legendary">{{localize 'ENCOUNTER.Legendary'}}</option>
+      </select>
+    </div>
+
+    {{!-- NA Mode --}}
+    <div class="enc-field">
+      <div class="enc-na-toggle">
+        <input type="radio" id="enc-na-wandering" name="enc-na-mode" value="wandering" checked>
+        <label for="enc-na-wandering">{{localize 'ENCOUNTER.Wandering'}}</label>
+        <input type="radio" id="enc-na-lair" name="enc-na-mode" value="lair">
+        <label for="enc-na-lair">{{localize 'ENCOUNTER.Lair'}}</label>
+      </div>
+    </div>
+
+  </div>
+
+  {{!-- TPL Row --}}
+  <div class="enc-tpl-row">
+    <span class="enc-tpl-label">{{localize 'ENCOUNTER.MaxTPL'}}: <strong id="enc-tpl-display" class="enc-tpl-max">—</strong></span>
+    <span class="enc-tpl-separator">→</span>
+    <span class="enc-tpl-label">{{localize 'ENCOUNTER.RealTPL'}}: <strong id="enc-real-tpl-display" class="enc-tpl-real">—</strong></span>
+    <span class="enc-tpl-note" id="enc-tpl-note"></span>
+    <button type="button" class="enc-btn-generate" data-action="generateEncounter">{{localize 'ENCOUNTER.GenerateBtn'}}</button>
+  </div>
+
+  {{!-- Results --}}
+  <div class="enc-results" id="enc-results" style="display:none;">
+    <div class="enc-results-header">
+      <span class="enc-results-title">{{localize 'ENCOUNTER.ResultsTitle'}}</span>
+      <span class="enc-challenge-badge" id="enc-challenge-badge"></span>
+    </div>
+    <div class="enc-monster-list" id="enc-monster-list">
+      {{!-- Populated dynamically --}}
+    </div>
+    <div class="enc-drop-controls" id="enc-drop-controls" style="display:none;">
+      <button type="button" class="enc-btn-drop" data-action="dropToScene">
+        <i class="fas fa-crosshairs"></i> {{localize 'ENCOUNTER.DropToScene'}}
+      </button>
+      <span class="enc-drop-hint">{{localize 'ENCOUNTER.DropHint'}}</span>
+    </div>
+    <div class="enc-results-footer">
+      <span id="enc-total-hd-display"></span>
+      <span id="enc-pct-display"></span>
+    </div>
+  </div>
+
+  {{!-- Click target overlay for drop positioning --}}
+  <div class="enc-drop-overlay" id="enc-drop-overlay" style="display:none;">
+    <span class="enc-drop-overlay-text"><i class="fas fa-crosshairs"></i> {{localize 'ENCOUNTER.ClickMapToPlace'}}</span>
+  </div>
+
+  {{!-- Empty state --}}
+  <div class="enc-empty" id="enc-empty">
+    <i class="fas fa-dragon"></i>
+    <p>{{localize 'ENCOUNTER.EmptyHint'}}</p>
+  </div>
+
+</div>

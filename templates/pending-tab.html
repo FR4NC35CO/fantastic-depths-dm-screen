@@ -1,0 +1,69 @@
+{{!-- Pending XP Tab Template --}}
+{{#if pendingData.actors.length}}
+<div class="pending-section">
+  <div class="pending-header" style="margin: 0 10px 15px 10px; display: flex; justify-content: space-between; align-items: center; color: #ffd93d;">
+    <div style="display: flex; align-items: center; gap: 5px;">
+      <input type="checkbox" class="select-all-checkbox" checked>
+    </div>
+    <h3 style="margin: 0; color: #ffd93d;">
+      {{localize 'PENDING.Total'}}: {{pendingData.totalPending}}
+    </h3>
+  </div>
+  
+  {{!-- Personaggi normali (non seguaci) --}}
+  {{#each pendingData.actors as |actor|}}
+  {{#unless actor.isFollower}}
+  <div class="pending-item" data-actor-id="{{actor.id}}">
+    <input type="checkbox" class="pending-checkbox" checked>
+    <div class="pending-info">
+      <span class="actor-name" data-action="openSheet" data-actor-id="{{actor.id}}">
+        {{actor.name}} - {{actor.class}} L{{actor.level}}
+      </span>
+      <span class="xp-pending">{{actor.xp.pending}} PX</span>
+    </div>
+  </div>
+  {{/unless}}
+  {{/each}}
+  
+  {{!-- Separatore visivo tra personaggi e seguaci --}}
+  {{#if pendingData.followerCount}}
+  <div class="pending-separator">
+    <div class="separator-line">
+      <span class="separator-text">{{localize 'PARTY.SeparatorFollowers'}}</span>
+    </div>
+  </div>
+  {{/if}}
+  
+  {{!-- Seguaci --}}
+  {{#each pendingData.actors as |actor|}}
+  {{#if actor.isFollower}}
+  <div class="pending-item follower" data-actor-id="{{actor.id}}">
+    <input type="checkbox" class="pending-checkbox" checked>
+    <div class="pending-info">
+      <span class="actor-name" data-action="openSheet" data-actor-id="{{actor.id}}">
+        {{actor.name}} - {{actor.class}} L{{actor.level}}
+      </span>
+      <span class="xp-pending">{{actor.xp.pending}} PX</span>
+    </div>
+  </div>
+  {{/if}}
+  {{/each}}
+  
+  <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; align-items: center;">
+    <div class="chat-visibility-toggle" data-action="toggleChatVisibility" data-public="{{pendingData.chatPublic}}" style="cursor: pointer; font-size: 16px; color: {{#if pendingData.chatPublic}}#ffd93d{{else}}#666{{/if}};">
+      <i class="fas {{#if pendingData.chatPublic}}fa-eye{{else}}fa-eye-slash{{/if}}"></i>
+    </div>
+    <button data-action="awardPending" class="btn-success" style="min-width: 140px;">
+      <i class="fas fa-check"></i> {{localize 'PENDING.Button.Award'}}
+    </button>
+    <button data-action="clearPending" class="btn-danger" style="min-width: 140px;">
+      <i class="fas fa-trash"></i> {{localize 'PENDING.Button.Clear'}}
+    </button>
+  </div>
+</div>
+{{else}}
+  <div class="empty-state">
+    <p>{{localize 'PENDING.NoPending'}}</p>
+    <p>{{localize 'PENDING.GoToAward'}}</p>
+  </div>
+{{/if}}

@@ -1,0 +1,36 @@
+{{!-- Roll Table Dialog Template --}}
+<div class="rolltable-dialog-content">
+  <div class="rolltable-form">
+    <div class="form-group">
+      <label>{{localize 'ROLLTABLE.SelectCategory'}}</label>
+      <select id="rolltable-category" class="rolltable-select" name="selectedCategory">
+        <option value="">{{localize 'ROLLTABLE.ChooseCategory'}}</option>
+        {{#each categories as |category|}}
+        <option value="{{category.id}}" {{#if (eq ../selectedCategory category.id)}}selected{{/if}}>{{category.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize 'ROLLTABLE.SelectTable'}}</label>
+      <select id="rolltable-select" class="rolltable-select">
+        <option value="">{{localize 'ROLLTABLE.ChooseTable'}}</option>
+        {{#each filteredTables as |table|}}
+        <option value="{{table.uuid}}" {{#if (eq ../selectedTable.uuid table.uuid)}}selected{{/if}}>{{table.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    
+    <div class="form-group roll-mode-group">
+      <label>{{localize 'ROLLTABLE.RollMode'}}</label>
+      <div class="roll-mode-toggle">
+        <select id="rolltable-mode" class="rolltable-mode-select">
+          <option value="publicroll">{{localize 'ROLLTABLE.Public'}}</option>
+          <option value="gmroll">{{localize 'ROLLTABLE.PrivateGM'}}</option>
+          <option value="blindroll">{{localize 'ROLLTABLE.BlindGM'}}</option>
+          <option value="selfroll" selected>{{localize 'ROLLTABLE.Self'}}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>

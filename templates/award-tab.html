@@ -1,0 +1,107 @@
+{{!-- Award XP Tab Template --}}
+{{#if actors.length}}
+<div class="xp-award-section">
+  <form class="xp-award-form">
+    <div class="xp-form-row">
+      <label class="right-align">{{localize 'AWARD.GlobalXP'}}:</label>
+      <div class="xp-global-input-wrap">
+        <button type="button" data-action="addTreasureXP" class="xp-treasure-btn-inside" data-tooltip="{{localize 'AWARD.Tooltip.AddTreasure'}}">
+          <i class="fas fa-plus"></i>
+        </button>
+        <input type="number" class="xp-global-input" name="global-xp-input" value="0" min="0" max="9999999999999999">
+      </div>
+      <select name="award-mode" data-action="changeMode">
+        {{#each awardData.awardModes as |mode|}}
+        <option value="{{mode.value}}">{{mode.label}}</option>
+        {{/each}}
+      </select>
+      <button type="button" data-action="calculateShares" class="xp-icon-btn" data-tooltip="{{localize 'AWARD.Tooltip.Calculate'}}">
+        <i class="fas fa-calculator"></i>
+      </button>
+      <button type="button" data-action="storeXP" class="xp-icon-btn" data-tooltip="{{localize 'AWARD.Tooltip.Store'}}">
+        <i class="fas fa-save"></i>
+      </button>
+      <button type="button" data-action="resetValues" class="xp-icon-btn" data-tooltip="{{localize 'AWARD.Tooltip.Reset'}}">
+        <i class="fas fa-undo"></i>
+      </button>
+    </div>
+  </form>
+  
+  {{!-- XP Distribution Table --}}
+  <table class="xp-distribution-table party-table">
+    <thead>
+      <tr>
+        <th>{{localize 'AWARD.Table.Name'}}</th>
+        <th>{{localize 'AWARD.Table.Share'}}</th>
+        <th>{{localize 'AWARD.Table.BaseXP'}}</th>
+        <th data-tooltip="{{localize 'PARTY.BonusTooltip'}}">{{localize 'PARTY.Bonus'}}</th>
+        <th>{{localize 'AWARD.Table.TotalXP'}}</th>
+        <th class="xp-missing-header" data-tooltip="{{localize 'PARTY.MissingXPTooltip'}}">{{localize 'PARTY.MissingXP'}}</th>
+        <th class="xp-pending-header" data-tooltip="{{localize 'PARTY.PendingXP'}}">{{localize 'PARTY.PendingXPAbbrev'}}</th>
+      </tr>
+    </thead>
+    <tbody id="xp-distribution-body">
+      {{!-- Personaggi normali (non seguaci) --}}
+      {{#each actors as |actor|}}
+      {{#unless actor.isFollower}}
+      <tr data-actor-id="{{actor.id}}" class="{{#if actor.isDead}}is-dead{{/if}}">
+        <td>
+          <div class="character-cell">
+            <img src="{{actor.img}}" class="character-img" alt="{{actor.name}}">
+            <div class="character-info">
+              <span class="character-name" data-action="openSheet" data-actor-id="{{actor.id}}">{{actor.name}}</span>
+              <span class="character-class">{{actor.class}}</span>
+            </div>
+          </div>
+        </td>
+        <td class="center"><input type="number" class="share-input" value="{{#if actor.isDead}}0{{else}}1{{/if}}" min="0" step="0.5"></td>
+        <td class="center"><input type="number" class="xp-base-input" value="0"></td>
+        <td class="right-align" data-tooltip="{{actor.xp.bonus}}%">{{#if actor.xp.bonus}}{{actor.xp.bonus}}%{{else}}0%{{/if}}</td>
+        <td class="center"><input type="number" class="xp-total-input" value="0" readonly></td>
+        <td class="right-align xp-missing">{{#if actor.xp.levelUp}}<i class="fas fa-circle-arrow-up xp-levelup-icon" data-tooltip="Level Up!"></i>{{else if actor.xp.missing}}{{actor.xp.missing}}{{else}}-{{/if}}</td>
+        <td class="right-align xp-pending">{{actor.xp.pending}}</td>
+      </tr>
+      {{/unless}}
+      {{/each}}
+      
+      {{!-- Separatore visivo tra personaggi e seguaci --}}
+      {{#if awardData.followerCount}}
+      <tr class="party-separator">
+        <td colspan="7">
+          <div class="separator-line">
+            <span class="separator-text">{{localize 'PARTY.SeparatorFollowers'}}</span>
+          </div>
+        </td>
+      </tr>
+      {{/if}}
+      
+      {{!-- Seguaci --}}
+      {{#each actors as |actor|}}
+      {{#if actor.isFollower}}
+      <tr data-actor-id="{{actor.id}}" class="follower {{#if actor.isDead}}is-dead{{/if}}">
+        <td>
+          <div class="character-cell">
+            <img src="{{actor.img}}" class="character-img" alt="{{actor.name}}">
+            <div class="character-info">
+              <span class="character-name" data-action="openSheet" data-actor-id="{{actor.id}}">{{actor.name}}</span>
+              <span class="character-class">{{actor.class}}</span>
+            </div>
+          </div>
+        </td>
+        <td class="center"><input type="number" class="share-input" value="{{#if actor.isDead}}0{{else}}0.5{{/if}}" min="0" step="0.5"></td>
+        <td class="center"><input type="number" class="xp-base-input" value="0"></td>
+        <td class="right-align" data-tooltip="{{actor.xp.bonus}}%">{{#if actor.xp.bonus}}{{actor.xp.bonus}}%{{else}}0%{{/if}}</td>
+        <td class="center"><input type="number" class="xp-total-input" value="0" readonly></td>
+        <td class="right-align xp-missing">{{#if actor.xp.levelUp}}<i class="fas fa-circle-arrow-up xp-levelup-icon" data-tooltip="Level Up!"></i>{{else if actor.xp.missing}}{{actor.xp.missing}}{{else}}-{{/if}}</td>
+        <td class="right-align xp-pending">{{actor.xp.pending}}</td>
+      </tr>
+      {{/if}}
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+  <div class="empty-state">
+    <p>{{localize 'AWARD.NoCharacters'}}</p>
+  </div>
+{{/if}}

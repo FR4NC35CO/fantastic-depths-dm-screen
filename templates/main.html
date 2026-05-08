@@ -1,0 +1,46 @@
+{{!-- Main Template for Fantastic Depths DM Screen - Fantastic Depths Style Sidebar --}}
+<div class="fd-ds-container sheet">
+  {{!-- Left Sidebar Navigation like Character Sheet --}}
+  <aside class="sheet-sidebar fd-ds-sidebar">
+    <nav class="sheet-navigation fd-ds-nav" data-group="primary">
+      {{#each tabs as |tab|}}
+      <a class="item {{#if tab.active}}active{{/if}}" data-tab="{{tab.id}}" data-group="primary" data-action="switchTab" data-tooltip="{{tab.tooltip}}">
+        <i class="fas {{tab.icon}}"></i>
+      </a>
+      {{/each}}
+    </nav>
+  </aside>
+
+  {{!-- Main Content Area --}}
+  <section class="sheet-body fd-ds-body">
+    {{!-- Party Tab --}}
+    <div class="tab fd-ds-tab-content {{#if (eq currentTab 'party')}}active{{/if}}" data-tab="party" data-group="primary">
+      {{{partyTabHTML}}}
+    </div>
+
+    {{!-- Award XP Tab --}}
+    <div class="tab fd-ds-tab-content {{#if (eq currentTab 'award')}}active{{/if}}" data-tab="award" data-group="primary">
+      {{{awardTabHTML}}}
+    </div>
+
+    {{!-- Pending XP Tab --}}
+    <div class="tab fd-ds-tab-content {{#if (eq currentTab 'pending')}}active{{/if}}" data-tab="pending" data-group="primary">
+      {{{pendingTabHTML}}}
+    </div>
+
+    {{!-- Request Roll Tab --}}
+    <div class="tab fd-ds-tab-content {{#if (eq currentTab 'request')}}active{{/if}}" data-tab="request" data-group="primary">
+      {{{requestTabHTML}}}
+    </div>
+
+    {{!-- Character Generator Tab --}}
+    <div class="tab fd-ds-tab-content {{#if (eq currentTab 'generator')}}active{{/if}}" data-tab="generator" data-group="primary">
+      {{{generatorTabHTML}}}
+    </div>
+
+    {{!-- Encounter Generator Tab --}}
+    <div class="tab fd-ds-tab-content {{#if (eq currentTab 'encounter')}}active{{/if}}" data-tab="encounter" data-group="primary">
+      {{{encounterTabHTML}}}
+    </div>
+  </section>
+</div>

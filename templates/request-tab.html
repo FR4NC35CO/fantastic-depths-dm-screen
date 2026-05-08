@@ -1,0 +1,104 @@
+{{!-- Request Roll Tab Template --}}
+<div class="request-roll-container">
+  <div class="request-roll-layout">
+    <!-- Left Area: Character List -->
+    <div class="request-left-area">
+      <div class="request-header">
+        <input type="checkbox" class="request-select-all-checkbox">
+        <span class="request-header-label">{{localize 'REQUEST.Characters'}}</span>
+      </div>
+
+      <div class="request-character-list">
+        {{#each actors as |actor|}}
+        {{#unless actor.isFollower}}
+        <div class="request-character-item" data-actor-id="{{actor.id}}">
+          <input type="checkbox" class="request-character-checkbox" data-actor-id="{{actor.id}}">
+          <img src="{{actor.img}}" class="request-character-img" alt="{{actor.name}}">
+          <div class="request-character-info">
+            <span class="request-character-name" data-action="openSheet" data-actor-id="{{actor.id}}">{{actor.name}}</span>
+            <span class="request-character-class">{{actor.class}}</span>
+          </div>
+        </div>
+        {{/unless}}
+        {{/each}}
+
+        {{#if partyData.followers.total}}
+        <div class="request-separator">
+          <div class="separator-line">
+            <span class="separator-text">{{localize 'PARTY.SeparatorFollowers'}}</span>
+          </div>
+        </div>
+        {{/if}}
+
+        {{#each actors as |actor|}}
+        {{#if actor.isFollower}}
+        <div class="request-character-item follower" data-actor-id="{{actor.id}}">
+          <input type="checkbox" class="request-character-checkbox" data-actor-id="{{actor.id}}">
+          <img src="{{actor.img}}" class="request-character-img" alt="{{actor.name}}">
+          <div class="request-character-info">
+            <span class="request-character-name" data-action="openSheet" data-actor-id="{{actor.id}}">{{actor.name}}</span>
+            <span class="request-character-class">{{actor.class}}</span>
+          </div>
+        </div>
+        {{/if}}
+        {{/each}}
+      </div>
+    </div>
+
+    <!-- Right Area: Roll Options -->
+    <div class="request-right-area">
+      <!-- Abilities Section -->
+      <div class="request-section">
+        <h4>{{localize 'REQUEST.Abilities'}}</h4>
+        <div class="request-checkbox-grid-3col">
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="ability" data-ability="str"> {{localize 'REQUEST.STR'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="ability" data-ability="dex"> {{localize 'REQUEST.DEX'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="ability" data-ability="int"> {{localize 'REQUEST.INT'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="ability" data-ability="wis"> {{localize 'REQUEST.WIS'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="ability" data-ability="con"> {{localize 'REQUEST.CON'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="ability" data-ability="cha"> {{localize 'REQUEST.CHA'}}</label>
+        </div>
+      </div>
+
+      <!-- Saving Throws Section -->
+      <div class="request-section">
+        <h4>{{localize 'REQUEST.SavingThrows'}}</h4>
+        <div class="request-checkbox-grid-3col">
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="save" data-save="wand"> {{localize 'REQUEST.WandSave'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="save" data-save="spell"> {{localize 'REQUEST.SpellSave'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="save" data-save="petrification"> {{localize 'REQUEST.PetrificationSave'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="save" data-save="breath"> {{localize 'REQUEST.BreathSave'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="save" data-save="death"> {{localize 'REQUEST.DeathSave'}}</label>
+        </div>
+      </div>
+
+      <!-- Exploration Section -->
+      <div class="request-section">
+        <h4>{{localize 'REQUEST.Exploration'}}</h4>
+        <div class="request-checkbox-grid">
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="exploration" data-skill="findSecretDoors"> {{localize 'REQUEST.FindSecretDoors'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="exploration" data-skill="forceOpenDoors"> {{localize 'REQUEST.ForceOpenDoors'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="exploration" data-skill="listenAtDoors"> {{localize 'REQUEST.ListenAtDoors'}}</label>
+          <label><input type="checkbox" class="request-roll-type" data-action="selectRollType" data-type="exploration" data-skill="findTraps"> {{localize 'REQUEST.FindTraps'}}</label>
+        </div>
+      </div>
+
+      <!-- Flavour Section -->
+      <div class="request-section">
+        <input type="text" id="request-flavour" class="request-input" placeholder="{{localize 'REQUEST.FlavourPlaceholder'}}">
+      </div>
+
+      <!-- Bottom Row: Roll Mode + Send Button -->
+      <div class="request-section">
+        <div class="request-bottom-row">
+          <div class="request-roll-mode-toggle chat-visibility-toggle" data-action="toggleRequestRollMode" data-public="true" style="cursor: pointer; font-size: 16px; color: #ffd93d; display: flex; align-items: center;">
+            <i class="fas fa-eye"></i>
+          </div>
+          <button class="request-send-btn" data-action="sendRequest">
+            <i class="fas fa-paper-plane"></i> {{localize 'REQUEST.SendRequest'}}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

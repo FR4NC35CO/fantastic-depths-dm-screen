@@ -1,0 +1,139 @@
+{{!-- Party Tab Template --}}
+{{#if actors.length}}
+  {{!-- Summary Bar --}}
+  <div class="summary-bar">
+    <button type="button" data-action="showWrestling" class="xp-icon-btn wrestling-btn" data-tooltip="{{localize 'PARTY.WrestlingTooltip'}}">
+      <img src="systems/fantastic-depths/assets/img/ui/wrestling.webp" alt="{{localize 'PARTY.WrestlingTooltip'}}">
+    </button>
+
+    <button type="button" data-action="showShove" class="xp-icon-btn shove-btn" data-tooltip="{{localize 'PARTY.ShoverTooltip'}}">
+      <img src="systems/fantastic-depths/assets/img/ui/shove.png" alt="{{localize 'PARTY.ShoverTooltip'}}">
+    </button>
+
+    <button type="button" data-action="showAcrobatics" class="xp-icon-btn acrobatics-btn" data-tooltip="{{localize 'PARTY.AcrobaticsTooltip'}}">
+      <img src="icons/svg/jump.svg" alt="{{localize 'PARTY.AcrobaticsTooltip'}}">
+    </button>
+
+    <button type="button" data-action="showRollTableHelper" class="xp-icon-btn rolltable-btn" data-tooltip="{{localize 'PARTY.RollTableTooltip'}}">
+      <img src="systems/fantastic-depths/assets/img/ui/spell-book.svg" alt="{{localize 'PARTY.RollTableTooltip'}}">
+    </button>
+
+    <button type="button" data-action="showLightManager" class="xp-icon-btn light-btn" data-tooltip="{{localize 'PARTY.LightManagerTooltip'}}">
+      <img src="icons/svg/light.svg" alt="{{localize 'PARTY.LightManagerTooltip'}}">
+    </button>
+
+    <div class="summary-item push-right" data-tooltip="{{localize 'PARTY.PendingXPTooltip'}}">
+      <span class="summary-label">{{localize 'PARTY.PendingXP'}}</span>
+      <span class="summary-value xp-pending">{{partyData.totalPending}}</span>
+    </div>
+
+    <div class="summary-item" data-tooltip="{{localize 'PARTY.LTPTooltip'}}">
+      <span class="summary-label">{{localize 'PARTY.LTP'}}</span>
+      <span class="summary-value ltp">{{partyData.ltp}}</span>
+    </div>
+
+    {{#if partyData.characters.dead}}
+    <div class="summary-item">
+      <span class="summary-label">{{localize 'PARTY.Dead'}}</span>
+      <span class="summary-value dead">{{partyData.characters.dead}}</span>
+    </div>
+    {{/if}}
+  </div>
+  
+  {{!-- Party Table --}}
+  <table class="party-table">
+    <thead>
+      <tr>
+        <th>{{localize 'PARTY.TableHeader'}}</th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.STR'}}">{{localize 'PARTY.Abbrev.STR'}}</th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.DEX'}}">{{localize 'PARTY.Abbrev.DEX'}}</th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.INT'}}">{{localize 'PARTY.Abbrev.INT'}}</th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.WIS'}}">{{localize 'PARTY.Abbrev.WIS'}}</th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.CON'}}">{{localize 'PARTY.Abbrev.CON'}}</th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.CHA'}}">{{localize 'PARTY.Abbrev.CHA'}}</th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.HP'}}"><i class="fas fa-heart"></i></th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.AC'}}"><i class="fas fa-shield-alt"></i></th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.THAC0'}}"><i class="fas fa-swords"></i></th>
+        <th class="center" data-tooltip="{{localize 'PARTY.Tooltip.Movement'}}"><i class="fas fa-walking"></i></th>
+        <th class="center bonus-header" data-tooltip="{{localize 'PARTY.Tooltip.Level'}}"><i class="fas fa-user"></i></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{!-- Personaggi normali (non seguaci) --}}
+      {{#each actors as |actor|}}
+      {{#unless actor.isFollower}}
+      <tr class="party-member {{#if actor.isDead}}is-dead{{/if}}" data-actor-id="{{actor.id}}">
+        <td>
+          <div class="character-cell">
+            <img src="{{actor.img}}" class="character-img" alt="{{actor.name}}">
+            <div class="character-info">
+              <span class="character-name" data-action="openSheet" data-actor-id="{{actor.id}}">
+                {{actor.name}}
+              </span>
+              <span class="character-class">{{actor.class}}{{#if actor.alignment}} <span class="alignment">- ({{actor.alignment}})</span>{{/if}}</span>
+            </div>
+          </div>
+        </td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="str" data-actor-id="{{actor.id}}">{{actor.abilities.str}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="dex" data-actor-id="{{actor.id}}">{{actor.abilities.dex}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="int" data-actor-id="{{actor.id}}">{{actor.abilities.int}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="wis" data-actor-id="{{actor.id}}">{{actor.abilities.wis}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="con" data-actor-id="{{actor.id}}">{{actor.abilities.con}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="cha" data-actor-id="{{actor.id}}">{{actor.abilities.cha}}</td>
+        <td class="stat-value hp-value">{{actor.hp.value}}/{{actor.hp.max}}</td>
+        <td class="stat-value ac-value">{{actor.ac}}</td>
+        <td class="stat-value">{{actor.thac0}}</td>
+        <td class="stat-value">{{actor.movement}}</td>
+        <td class="stat-value lvl-value">{{actor.level}}</td>
+      </tr>
+      {{/unless}}
+      {{/each}}
+
+      {{!-- Separatore visivo tra personaggi e seguaci --}}
+      {{#if partyData.followers.total}}
+      <tr class="party-separator">
+        <td colspan="12">
+          <div class="separator-line">
+            <span class="separator-text">{{localize 'PARTY.SeparatorFollowers'}}</span>
+          </div>
+        </td>
+      </tr>
+      {{/if}}
+      
+      {{!-- Seguaci --}}
+      {{#each actors as |actor|}}
+      {{#if actor.isFollower}}
+      <tr class="party-member follower {{#if actor.isDead}}is-dead{{/if}}" data-actor-id="{{actor.id}}">
+        <td>
+          <div class="character-cell">
+            <img src="{{actor.img}}" class="character-img" alt="{{actor.name}}">
+            <div class="character-info">
+              <span class="character-name" data-action="openSheet" data-actor-id="{{actor.id}}">
+                {{actor.name}}
+              </span>
+              <span class="character-class">{{actor.class}}{{#if actor.alignment}} <span class="alignment">- ({{actor.alignment}})</span>{{/if}}</span>
+            </div>
+          </div>
+        </td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="str" data-actor-id="{{actor.id}}">{{actor.abilities.str}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="dex" data-actor-id="{{actor.id}}">{{actor.abilities.dex}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="int" data-actor-id="{{actor.id}}">{{actor.abilities.int}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="wis" data-actor-id="{{actor.id}}">{{actor.abilities.wis}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="con" data-actor-id="{{actor.id}}">{{actor.abilities.con}}</td>
+        <td class="stat-value ability-roll" data-action="rollAbility" data-ability="cha" data-actor-id="{{actor.id}}">{{actor.abilities.cha}}</td>
+        <td class="stat-value hp-value">{{actor.hp.value}}/{{actor.hp.max}}</td>
+        <td class="stat-value ac-value">{{actor.ac}}</td>
+        <td class="stat-value">{{actor.thac0}}</td>
+        <td class="stat-value">{{actor.movement}}</td>
+        <td class="stat-value lvl-value">{{actor.level}}</td>
+      </tr>
+      {{/if}}
+      {{/each}}
+    </tbody>
+  </table>
+{{else}}
+  <div class="empty-state">
+    <p>{{localize 'PARTY.NoCharacters'}}</p>
+    <p>{{localize 'PARTY.CreateHint'}}</p>
+  </div>
+{{/if}}

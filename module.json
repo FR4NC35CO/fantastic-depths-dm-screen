@@ -1,0 +1,43 @@
+{
+  "id": "fantastic-depths-dm-screen",
+  "title": "Fantastic Depths DM Screen",
+  "description": "Gestione Party, distribuzione XP e generazione personaggi per Fantastic Depths. Compatibile con Foundry VTT v13 e v14.",
+  "authors": [
+    {
+      "name": "FR4NC35C0",
+      "discord": "fr4nc35c0"
+    }
+  ],
+  "version": "1.0.0",
+  "minimumCoreVersion": "13",
+  "compatibleCoreVersion": "14",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14.361"
+  },
+  "esmodules": [
+    "scripts/main.mjs"
+  ],
+  "styles": [
+    "styles/fantastic-depths-dm-screen.css"
+  ],
+  "languages": [
+    {
+      "lang": "it",
+      "name": "Italiano",
+      "path": "lang/it.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "socket": true,
+  "url": "https://github.com/fr4nc35c0/fantastic-depths-dm-screen",
+  "manifest": "https://github.com/fr4nc35c0/fantastic-depths-dm-screen/releases/download/latest/module.json",
+  "download": "https://github.com/fr4nc35c0/fantastic-depths-dm-screen/releases/download/latest/fantastic-depths-dm-screen.zip",
+  "license": "MIT",
+  "readme": "README.md",
+  "bugs": "https://github.com/fr4nc35c0/fantastic-depths-dm-screen/issues"
+}
