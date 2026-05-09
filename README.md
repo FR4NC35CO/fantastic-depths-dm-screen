@@ -1,8 +1,12 @@
 # Fantastic Depths DM Screen
 
+![Foundry VTT](https://img.shields.io/badge/Foundry_VTT-v13_|_v14-brightgreen)
+![System](https://img.shields.io/badge/System-Fantastic_Depths-orange)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
 [English](#english) | [Italiano](#italiano)
 
----
+<img src="Images/fade-dm-screen-party.jpg" alt="DM Screen" width="30%"> <img src="Images/fade-dm-screen-pcgen.jpg" alt="DM Screen" width="43%"> <img src="Images/fade-dm-screen-xpaward.jpg" alt="DM Screen" width="30%"> <img src="Images/fade-dm-screen-pendingxp.jpg" alt="DM Screen" width="30%"> <img src="Images/fade-dm-screen-requestroll.jpg" alt="DM Screen" width="30%"> 
 
 <a name="english"></a>
 ## English
@@ -10,13 +14,12 @@
 Foundry VTT module for Party management, Experience Points (XP) distribution, Encounter and character generation for the **Fantastic Depths** system with BECMI and Rules Cyclopedia rules.
 
 ### Compatibility
-
 - **Foundry VTT**: v13 and v14
-- **System**: Fantastic Depths
+- **System Requirements**: Fantastic Depths v1.0.13
+- **Modules Requirements**: Fantastic Depths Compendiums v1.0.3
 - **Module Version**: 1.0.0
 
 ### Installation
-
 #### Method 1: Manifest URL (Recommended)
 
 1. Open Foundry VTT and go to **Add-on Modules**
@@ -35,7 +38,6 @@ Foundry VTT module for Party management, Experience Points (XP) distribution, En
 4. Restart Foundry VTT
 
 ### Features
-
 #### 🎭 Party Tab
 - Complete party view with statistics ready for roll checks
 - Party Total Level (LTP)
@@ -76,9 +78,7 @@ Foundry VTT module for Party management, Experience Points (XP) distribution, En
 - GM-only chat messages for roll table execution
 - Clickable links in chat to execute roll tables
 
-
 ### Usage
-
 After installation, you'll find the **"DM Screen"** button in the Actors sidebar and a book button just above the hot bar. Click to open the DM Screen.
 
 #### First Launch
@@ -113,25 +113,21 @@ On first launch, the module will automatically create the necessary folders:
 6. Click on the map to position the monsters in a circular formation
 
 ### Requirements
-
 - **Fantastic Depths v1.0.13** system installed and active
 - **Fantastic Depths Compendiums v1.0.3** system installed and active
 - **Game Master** role to use all features
 
 ### Support
-
 For bugs, suggestions, or support:
 - Open an issue on [GitHub](https://github.com/FR4NC35CO/fantastic-depths-dm-screen/issues)
 - Discord: FR4NC35C0
 
 ### Credits
-
 - **Author**: FR4NC35C0
 - **System**: Fantastic Depths by Forelius
 - **License**: MIT
 
 ### Changelog
-
 #### v1.0.0
 - Initial release
 - Party and XP management
@@ -146,13 +142,12 @@ For bugs, suggestions, or support:
 Modulo Foundry VTT per la gestione del Party, distribuzione di Punti Esperienza (PX), generazione di incontri e personaggi per il sistema **Fantastic Depths** con regole BECMI e Rules Cyclopedia.
 
 ### Compatibilità
-
 - **Foundry VTT**: v13 e v14
-- **Sistema**: Fantastic Depths
+- **System Requirements**: Fantastic Depths v1.0.13
+- **Modules Requirements**: Fantastic Depths Compendiums v1.0.3
 - **Versione modulo**: 1.0.0
 
 ### Installazione
-
 #### Metodo 1: Manifest URL (Consigliato)
 
 1. Apri Foundry VTT e vai nella sezione **Add-on Modules**
@@ -171,7 +166,6 @@ Modulo Foundry VTT per la gestione del Party, distribuzione di Punti Esperienza 
 4. Riavvia Foundry VTT
 
 ### Caratteristiche
-
 #### 🎭 Tab Party
 - Visualizzazione completa del party con statistiche pronte per i tiri di prova
 - Livello Totale del Party (LTP)
@@ -213,7 +207,6 @@ Modulo Foundry VTT per la gestione del Party, distribuzione di Punti Esperienza 
 - Funzione "Inserisci nella Scena" - posiziona i mostri generati direttamente sulla mappa
 
 ### Utilizzo
-
 Dopo l'installazione, troverai il pulsante **"DM Screen"** nella sidebar degli Attori e un pulsante a forma di libro sopra la hot bar. Clicca per aprire il DM Screen.
 
 #### Primo avvio
@@ -248,27 +241,31 @@ Al primo avvio, il modulo creerà automaticamente le cartelle necessarie:
 6. Clicca sulla mappa per posizionare i mostri in formazione circolare
 
 ### Requisiti
-
 - Sistema **Fantastic Depths v1.0.13** installato e attivo
 - Sistema **Fantastic Depths Compendiums v1.0.3** installato e attivo
 - Ruolo **Game Master** per utilizzare tutte le funzionalità
 
 ### Supporto
-
 Per bug, suggerimenti o supporto:
 - Apri una issue su [GitHub](https://github.com/FR4NC35CO/fantastic-depths-dm-screen/issues)
 - Discord: FR4NC35C0
 
 ### Crediti
-
 - **Autore**: FR4NC35C0
 - **Sistema**: Fantastic Depths by Forelius
 - **Licenza**: MIT
 
 ### Changelog
-
 #### v1.0.0
 - Rilascio iniziale
 - Gestione Party e PX
 - Generatore personaggi e incontri integrato
 - Compatibilità Foundry V13/V14
+
+---
+
+### AI Disclosure
+
+This module was developed with AI coding assistance.
+All code has been reviewed, understood, tested, and is fully maintained by the author.
+This project complies with the [Foundry VTT AI Content Policy](https://foundryvtt.com/article/ai-policy/).
