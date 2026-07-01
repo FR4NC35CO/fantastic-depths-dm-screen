@@ -8,12 +8,12 @@
       "discord": "fr4nc35c0"
     }
   ],
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minimumCoreVersion": "13",
   "compatibleCoreVersion": "14",
   "compatibility": {
     "minimum": "13",
-    "verified": "14.361"
+    "verified": "14.364"
   },
   "esmodules": [
     "scripts/main.mjs"
@@ -35,8 +35,8 @@
   ],
   "socket": true,
   "url": "https://github.com/FR4NC35CO/fantastic-depths-dm-screen",
-  "manifest": "https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/download/latest/module.json",
-  "download": "https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/download/latest/fantastic-depths-dm-screen.zip",
+  "manifest": "https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/latest/download/module.json",
+  "download": "https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/latest/download/fantastic-depths-dm-screen.zip",
   "license": "MIT",
   "readme": "README.md",
   "bugs": "https://github.com/FR4NC35CO/fantastic-depths-dm-screen/issues"

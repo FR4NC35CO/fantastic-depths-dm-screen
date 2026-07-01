@@ -17,7 +17,7 @@ Foundry VTT module for Party management, Experience Points (XP) distribution, En
 - **Foundry VTT**: v13 and v14
 - **System Requirements**: Fantastic Depths v1.0.13
 - **Modules Requirements**: Fantastic Depths Compendiums v1.0.3
-- **Module Version**: 1.0.0
+- **Module Version**: 1.0.1
 
 ### Installation
 #### Method 1: Manifest URL (Recommended)
@@ -26,7 +26,7 @@ Foundry VTT module for Party management, Experience Points (XP) distribution, En
 2. Click **Install Module**
 3. Enter this URL in the **Manifest URL** field:
    ```
-   https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/download/latest/module.json
+   https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/latest/download/module.json
    ```
 4. Click **Install**
 
@@ -128,6 +128,14 @@ For bugs, suggestions, or support:
 - **License**: MIT
 
 ### Changelog
+#### v1.0.1
+- Foundry VTT v14.364 verified compatibility
+- Fixed treasure table links event delegation for Foundry v14
+- Added localized treasure messages (EN/IT)
+- Added skipXP flag integration with Combat Carousel
+- Restored combat tracking state after GM reload
+- Sorted encounter location dropdown alphabetically
+
 #### v1.0.0
 - Initial release
 - Party and XP management
@@ -145,7 +153,7 @@ Modulo Foundry VTT per la gestione del Party, distribuzione di Punti Esperienza 
 - **Foundry VTT**: v13 e v14
 - **System Requirements**: Fantastic Depths v1.0.13
 - **Modules Requirements**: Fantastic Depths Compendiums v1.0.3
-- **Versione modulo**: 1.0.0
+- **Versione modulo**: 1.0.1
 
 ### Installazione
 #### Metodo 1: Manifest URL (Consigliato)
@@ -154,7 +162,7 @@ Modulo Foundry VTT per la gestione del Party, distribuzione di Punti Esperienza 
 2. Clicca **Install Module**
 3. Inserisci questo URL nel campo **Manifest URL**:
    ```
-   https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/download/latest/module.json
+   https://github.com/FR4NC35CO/fantastic-depths-dm-screen/releases/latest/download/module.json
    ```
 4. Clicca **Install**
 
@@ -256,6 +264,14 @@ Per bug, suggerimenti o supporto:
 - **Licenza**: MIT
 
 ### Changelog
+#### v1.0.1
+- Compatibilità verificata con Foundry VTT v14.364
+- Fix event delegation link tabelle tesoro per Foundry v14
+- Aggiunti messaggi tesoro localizzati (EN/IT)
+- Integrazione flag skipXP con Combat Carousel
+- Ripristino stato tracciamento combattimento dopo reload GM
+- Ordinamento alfabetico dropdown location degli incontri
+
 #### v1.0.0
 - Rilascio iniziale
 - Gestione Party e PX

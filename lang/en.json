@@ -452,5 +452,10 @@
   "SETTINGS.UseMetric": "Use Metric System",
   "SETTINGS.UseMetricHint": "If enabled, uses metric units (cm for height, 36m for movement). If disabled, uses imperial units (feet/inches for height, 120ft for movement).",
   "PGPXM.UseMetric": "Metric System",
-  "PGPXM.UseMetricHint": "Enable to use metric units (cm, meters) instead of imperial units (feet, feet/inches)"
+  "PGPXM.UseMetricHint": "Enable to use metric units (cm, meters) instead of imperial units (feet, feet/inches)",
+
+  "TREASURE.Available": "💎 Treasure Available",
+  "TREASURE.ClickInstruction": "Click links to roll treasure tables:",
+  "TREASURE.Type": "Treasure Type {type}",
+  "TREASURE.NoTreasure": "No treasure"
 }

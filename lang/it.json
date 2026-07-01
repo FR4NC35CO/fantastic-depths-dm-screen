@@ -446,5 +446,10 @@
   "SETTINGS.UseMetric": "Usa Sistema Metrico",
   "SETTINGS.UseMetricHint": "Se abilitato, usa unità metriche (cm per altezza, 36m per movimento). Se disabilitato, usa unità imperiali (piedi/pollici per altezza, 120ft per movimento).",
   "PGPXM.UseMetric": "Sistema Metrico",
-  "PGPXM.UseMetricHint": "Abilita per usare unità metriche (cm, metri) invece di unità imperiali (piedi, piedi/pollici)"
+  "PGPXM.UseMetricHint": "Abilita per usare unità metriche (cm, metri) invece di unità imperiali (piedi, piedi/pollici)",
+
+  "TREASURE.Available": "💎 Tesoro Disponibile",
+  "TREASURE.ClickInstruction": "Clicca i link per lanciare le tabelle tesoro:",
+  "TREASURE.Type": "Tesoro Tipo {type}",
+  "TREASURE.NoTreasure": "Nessun tesoro"
 }

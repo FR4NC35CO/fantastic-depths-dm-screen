@@ -1077,6 +1077,23 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const el = this.element;
     const state = this.encounterState || {};
 
+    // Sort location dropdown alphabetically by localized display text
+    const locationSelect = el.querySelector('#enc-location');
+    if (locationSelect && !locationSelect._sorted) {
+      const pinnedValues = ['random', 'any-only'];
+      const opts = Array.from(locationSelect.options);
+      const pinnedOpts = opts.filter(o => pinnedValues.includes(o.value));
+      const otherOpts = opts.filter(o => !pinnedValues.includes(o.value));
+      const lang = game.i18n.lang || 'en';
+      otherOpts.sort((a, b) => a.text.localeCompare(b.text, lang, { sensitivity: 'base' }));
+      locationSelect.innerHTML = '';
+      pinnedOpts
+        .sort((a, b) => pinnedValues.indexOf(a.value) - pinnedValues.indexOf(b.value))
+        .forEach(o => locationSelect.appendChild(o));
+      otherOpts.forEach(o => locationSelect.appendChild(o));
+      locationSelect._sorted = true;
+    }
+
     const typeSelect = el.querySelector('#enc-monster-type');
 
     // Populate monster types

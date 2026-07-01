@@ -664,52 +664,65 @@ Hooks.once('ready', () => {
     });
   });
 
-  // Unified hook to handle clicks on treasure links and roll-table execute links
-  Hooks.on('renderChatMessageHTML', (message, html, data) => {
-    const $html = $(html);
-    
-    // Handle treasure macro links
-    const treasureLinks = $html.find('.pg-px-treasure-link');
-    treasureLinks.each((i, link) => {
-      $(link).on('click', async (e) => {
+  // Unified event delegation for treasure links and roll-table execute links
+  // V14 fix: use document-level event delegation for reliability with dynamic chat content
+  function registerTreasureLinkDelegation() {
+    console.log(`[${MODULE_ID}] DEBUG: Registering treasure link event delegation`);
+    // Use document as target to catch clicks anywhere, filter by class
+    document.addEventListener('click', async (e) => {
+      // Handle treasure macro links - check if click was on or inside a treasure link
+      const treasureLink = e.target.closest('.pg-px-treasure-link');
+      if (treasureLink) {
         e.preventDefault();
-        const uuid = $(link).data('uuid');
+        e.stopPropagation();
+        const uuid = treasureLink.dataset.uuid;
         if (!uuid) return;
         
         const lang = game.i18n.lang;
+        
+        console.log(`[${MODULE_ID}] Treasure link clicked: ${uuid}`);
         
         try {
           const doc = await fromUuid(uuid);
           if (doc) {
             await doc.execute();
+            console.log(`[${MODULE_ID}] Macro executed successfully`);
+          } else {
+            console.error(`[${MODULE_ID}] Could not find document with UUID: ${uuid}`);
+            ui.notifications.error(lang === 'it' ? 'Macro non trovata' : 'Macro not found');
           }
         } catch (err) {
           console.error('[fantastic-depths-dm-screen] Error executing macro:', err);
           ui.notifications.error(lang === 'it' ? 'Errore nell\'esecuzione della macro' : 'Error executing macro');
         }
-      });
-    });
-
-    // Handle roll-table execute links
-    const rollTableLinks = $html.find('.roll-table-execute-link');
-    rollTableLinks.each((i, link) => {
-      $(link).on('click', async (e) => {
+        return;
+      }
+      
+      // Handle roll-table execute links
+      const rollTableLink = e.target.closest('.roll-table-execute-link');
+      if (rollTableLink) {
         e.preventDefault();
         e.stopPropagation();
         
         // Prevent multiple executions
-        if ($(link).data('processing') === 'true') {
+        if (rollTableLink.dataset.processing === 'true') {
           return;
         }
         
-        $(link).data('processing', 'true');
-        const uuid = $(link).data('uuid');
+        rollTableLink.dataset.processing = 'true';
+        const uuid = rollTableLink.dataset.uuid;
+        
+        console.log(`[${MODULE_ID}] RollTable link clicked: ${uuid}`);
         
         try {
           const table = await fromUuid(uuid);
           if (table) {
             const drawOptions = CONFIG.ChatMessage?.modes?.gmRoll ? { messageMode: 'gmRoll' } : { rollMode: 'gmroll' };
             await table.draw(drawOptions);
+            console.log(`[${MODULE_ID}] RollTable drawn successfully`);
+          } else {
+            console.error(`[${MODULE_ID}] Could not find table with UUID: ${uuid}`);
+            ui.notifications.error('RollTable not found');
           }
         } catch (err) {
           console.error('[fantastic-depths-dm-screen] Error executing roll-table:', err);
@@ -717,20 +730,50 @@ Hooks.once('ready', () => {
         } finally {
           // Reset processing flag after a short delay
           setTimeout(() => {
-            $(link).data('processing', 'false');
+            rollTableLink.dataset.processing = 'false';
           }, 1000);
         }
-      });
+      }
     });
-  });
+    
+    console.log(`[${MODULE_ID}] Event delegation for treasure/rolltable links registered`);
+  }
+  
+  // Register immediately if game is already ready, otherwise wait for ready hook
+  if (game.ready) {
+    console.log(`[${MODULE_ID}] DEBUG: Game already ready, registering immediately`);
+    registerTreasureLinkDelegation();
+  } else {
+    console.log(`[${MODULE_ID}] DEBUG: Waiting for ready hook`);
+    Hooks.once('ready', registerTreasureLinkDelegation);
+  }
 
-  // Note: treasure links and roll-table execute links are handled by renderChatMessageHTML hook
-  // Roll request icons use global event delegation to ensure they work even after chat reload
-  // Nota: I link treasure e roll-table sono gestiti dall'hook renderChatMessageHTML
+  // Note: treasure links and roll-table execute links use event delegation for V14 compatibility
   // Le icone roll request usano event delegation globale per funzionare anche dopo il ricaricamento della chat
 
   // Setup combat tracking hooks
   setupCombatHooks();
+
+  // Restore combat tracking state if a combat is already active (e.g. after GM page reload)
+  if (game.user.isGM) {
+    const activeCombat = game.combats.find(c => c.started) ?? game.combats.contents[0];
+    if (activeCombat && !globalThis.combatId) {
+      globalThis.combatId = activeCombat.id;
+      globalThis.combatStarted = activeCombat.round > 0;
+      globalThis.combatXP = 0;
+      globalThis.combatants.clear();
+      for (const combatant of activeCombat.combatants) {
+        const token = combatant.token;
+        const actor = combatant.actor;
+        if (token?.disposition === CONST.TOKEN_DISPOSITIONS.HOSTILE) {
+          const xp = actor?.system?.details?.xpAward || 0;
+          globalThis.combatXP += xp;
+          if (actor?.id) globalThis.combatants.add(actor.id);
+        }
+      }
+      console.log(`[${MODULE_ID}] ready | Restored combat tracking | id=${globalThis.combatId} started=${globalThis.combatStarted} xp=${globalThis.combatXP}`);
+    }
+  }
 
   // Set default metric system based on language (only on first load)
   const currentLang = game.settings.get('core', 'language');
@@ -1012,6 +1055,15 @@ function setupCombatHooks() {
     if (!game.user.isGM) return;
     console.log(`[fantastic-depths-dm-screen] deleteCombat | combatId: ${globalThis.combatId}, combat.id: ${combat.id}, combatXP: ${globalThis.combatXP}, combatStarted: ${globalThis.combatStarted}`);
     if (globalThis.combatId === combat.id && globalThis.combatXP > 0 && globalThis.combatStarted) {
+      // Check if carousel flagged this combat to skip XP (user chose "No" on XP dialog)
+      if (combat.getFlag?.('fantastic-depths-combat-carousel', 'skipXP')) {
+        console.log(`[fantastic-depths-dm-screen] deleteCombat | skipXP flag set — resetting without XP`);
+        globalThis.combatXP = 0;
+        globalThis.combatId = null;
+        globalThis.combatStarted = false;
+        globalThis.combatants.clear();
+        return;
+      }
       // Wait a tick for FaDe's end-combat chat message to appear
       await new Promise(r => setTimeout(r, 300));
       // Check if FaDe posted an "end combat" chat message (only End Combat does this, not Delete Encounter)
@@ -1172,28 +1224,8 @@ async function processCombatTreasure(combat) {
     return;
   }
   
-  // Determine if we can use automatic treasure links (English, no Italian module)
-  const lang = game.i18n.lang;
-  const italianModuleActive = game.modules.get('fade-lang-it')?.active;
-  const canUseAutoTreasure = (lang === 'en') && !italianModuleActive;
-
-  if (canUseAutoTreasure) {
-    // English mode: extract treasure types and create clickable links
-    await processTreasureWithLinks(hostileCombatants);
-  } else {
-    // Italian/Babele mode: show raw treasure text only
-    const monsterTreasures = [];
-    const noTreasureLabel = lang === 'it' ? 'Nessun tesoro' : 'No treasure';
-    for (const actor of hostileCombatants) {
-      const treasureText = (actor.system?.treasure || '').trim();
-      if (!treasureText || treasureText.toLowerCase() === 'nil') {
-        monsterTreasures.push({ name: actor.name, treasure: noTreasureLabel });
-      } else {
-        monsterTreasures.push({ name: actor.name, treasure: treasureText });
-      }
-    }
-    await createTreasureChatMessage(monsterTreasures);
-  }
+  // Always use clickable treasure links (removed Italian module restriction)
+  await processTreasureWithLinks(hostileCombatants);
 }
 
 // Process treasure with clickable links for English mode (no Babele translation issues)
@@ -1232,7 +1264,7 @@ async function processTreasureWithLinks(hostileCombatants) {
     if (entry) {
       treasureLinks.push({
         letter: treasureLetter,
-        name: macroName,
+        name: game.i18n.format('TREASURE.Type', { type: treasureLetter }),
         uuid: `Compendium.fade-compendiums.macro-compendium.${entry._id}`
       });
     }
@@ -1244,8 +1276,7 @@ async function processTreasureWithLinks(hostileCombatants) {
 }
 
 async function createTreasureChatMessage(monsterTreasures) {
-  const lang = game.i18n.lang;
-  const title = lang === 'it' ? '💎 Tesoro Disponibile' : '💎 Treasure Available';
+  const title = game.i18n.localize('TREASURE.Available');
   
   let content = `<h3>${title}</h3><ul>`;
   for (const { name, treasure } of monsterTreasures) {
@@ -1260,25 +1291,28 @@ async function createTreasureChatMessage(monsterTreasures) {
   });
 }
 
-// Create clickable treasure links message for English mode
+// Create clickable treasure links message
 async function createTreasureLinksChatMessage(treasureLinks, monsterNames) {
-  const lang = game.i18n.lang;
-  const title = '💎 Treasure Available';
-  const instruction = 'Click links to roll treasure tables:';
+  const title = game.i18n.localize('TREASURE.Available');
+  const instruction = game.i18n.localize('TREASURE.ClickInstruction');
   
-  let content = `<h3>${title}</h3>`;
-  content += `<p>${instruction}</p>`;
-  content += `<ul>`;
+  // Reduced font size (h4 instead of h3) and added CSS for clickable links
+  let content = `<h4 style="font-size: 1.1em; margin-bottom: 0.5em;">${title}</h4>`;
+  content += `<p style="font-size: 0.9em; margin-bottom: 0.5em;">${instruction}</p>`;
+  content += `<ul style="font-size: 0.9em;">`;
   
   for (const link of treasureLinks) {
     const names = monsterNames.get(link.letter) || ['Unknown'];
     const monsterName = Array.isArray(names) ? names.join(', ') : names;
     const uuid = link.uuid;
-    content += `<li><strong>${monsterName}</strong> (${link.letter}): <a class="pg-px-treasure-link" data-uuid="${uuid}">${link.name}</a></li>`;
+    // Added inline styles to make links look clickable
+    content += `<li><strong>${monsterName}</strong> (${link.letter}): <a class="pg-px-treasure-link" data-uuid="${uuid}" style="cursor: pointer; text-decoration: underline; color: #ff6400; font-weight: bold;">${link.name}</a></li>`;
   }
   
   content += `</ul>`;
 
+  console.log(`[${MODULE_ID}] DEBUG: Creating treasure message with content:`, content);
+  
   await ChatMessage.create({
     content: content,
     whisper: [game.users.activeGM.id],
