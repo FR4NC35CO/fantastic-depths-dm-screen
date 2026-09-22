@@ -1,0 +1,29 @@
+name: Release Module
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build release package
+        shell: pwsh
+        run: ./package-release.ps1
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: |
+            module.json
+            fantastic-depths-dm-screen.zip
+          generate_release_notes: true

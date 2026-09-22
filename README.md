@@ -17,7 +17,7 @@ Foundry VTT module for Party management, Experience Points (XP) distribution, En
 - **Foundry VTT**: v13 and v14
 - **System Requirements**: Fantastic Depths v1.0.13
 - **Modules Requirements**: Fantastic Depths Compendiums v1.0.3
-- **Module Version**: 1.0.1
+- **Module Version**: 1.2.8
 
 ### Installation
 #### Method 1: Manifest URL (Recommended)
@@ -128,6 +128,9 @@ For bugs, suggestions, or support:
 - **License**: MIT
 
 ### Changelog
+#### v1.2.8
+- Foundry VTT v14.368 verified compatibility
+
 #### v1.0.1
 - Foundry VTT v14.364 verified compatibility
 - Fixed treasure table links event delegation for Foundry v14
@@ -153,7 +156,7 @@ Modulo Foundry VTT per la gestione del Party, distribuzione di Punti Esperienza 
 - **Foundry VTT**: v13 e v14
 - **System Requirements**: Fantastic Depths v1.0.13
 - **Modules Requirements**: Fantastic Depths Compendiums v1.0.3
-- **Versione modulo**: 1.0.1
+- **Versione modulo**: 1.2.8
 
 ### Installazione
 #### Metodo 1: Manifest URL (Consigliato)

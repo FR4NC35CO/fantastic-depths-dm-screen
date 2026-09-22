@@ -8,12 +8,12 @@
       "discord": "fr4nc35c0"
     }
   ],
-  "version": "1.0.1",
+  "version": "1.2.8",
   "minimumCoreVersion": "13",
   "compatibleCoreVersion": "14",
   "compatibility": {
     "minimum": "13",
-    "verified": "14.364"
+    "verified": "14.368"
   },
   "esmodules": [
     "scripts/main.mjs"
