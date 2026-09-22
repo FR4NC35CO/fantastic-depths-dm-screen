@@ -15,8 +15,8 @@ Foundry VTT module for Party management, Experience Points (XP) distribution, En
 
 ### Compatibility
 - **Foundry VTT**: v13 and v14
-- **System Requirements**: Fantastic Depths v1.0.13
-- **Modules Requirements**: Fantastic Depths Compendiums v1.0.3
+- **System Requirements**: Fantastic Depths v1.2.8
+- **Modules Requirements**: Fantastic Depths Compendiums v1.0.10
 - **Module Version**: 1.2.8
 
 ### Installation
@@ -113,8 +113,8 @@ On first launch, the module will automatically create the necessary folders:
 6. Click on the map to position the monsters in a circular formation
 
 ### Requirements
-- **Fantastic Depths v1.0.13** system installed and active
-- **Fantastic Depths Compendiums v1.0.3** system installed and active
+- **Fantastic Depths v1.2.8** system installed and active
+- **Fantastic Depths Compendiums v1.0.10** system installed and active
 - **Game Master** role to use all features
 
 ### Support
@@ -130,6 +130,9 @@ For bugs, suggestions, or support:
 ### Changelog
 #### v1.2.8
 - Foundry VTT v14.368 verified compatibility
+- Updated system requirement to Fantastic Depths v1.2.8
+- Updated module requirement to Fantastic Depths Compendiums v1.0.10
+- Added `relationships.systems` and `relationships.requires` to module.json
 
 #### v1.0.1
 - Foundry VTT v14.364 verified compatibility
@@ -154,8 +157,8 @@ Modulo Foundry VTT per la gestione del Party, distribuzione di Punti Esperienza 
 
 ### Compatibilità
 - **Foundry VTT**: v13 e v14
-- **System Requirements**: Fantastic Depths v1.0.13
-- **Modules Requirements**: Fantastic Depths Compendiums v1.0.3
+- **System Requirements**: Fantastic Depths v1.2.8
+- **Modules Requirements**: Fantastic Depths Compendiums v1.0.10
 - **Versione modulo**: 1.2.8
 
 ### Installazione
@@ -252,8 +255,8 @@ Al primo avvio, il modulo creerà automaticamente le cartelle necessarie:
 6. Clicca sulla mappa per posizionare i mostri in formazione circolare
 
 ### Requisiti
-- Sistema **Fantastic Depths v1.0.13** installato e attivo
-- Sistema **Fantastic Depths Compendiums v1.0.3** installato e attivo
+- Sistema **Fantastic Depths v1.2.8** installato e attivo
+- Sistema **Fantastic Depths Compendiums v1.0.10** installato e attivo
 - Ruolo **Game Master** per utilizzare tutte le funzionalità
 
 ### Supporto

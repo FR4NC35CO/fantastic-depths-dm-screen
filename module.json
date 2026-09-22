@@ -15,6 +15,28 @@
     "minimum": "13",
     "verified": "14.368"
   },
+  "relationships": {
+    "systems": [
+      {
+        "id": "fantastic-depths",
+        "type": "system",
+        "compatibility": {
+          "minimum": "1.2.8",
+          "verified": "1.2.8"
+        }
+      }
+    ],
+    "requires": [
+      {
+        "id": "fade-compendiums",
+        "type": "module",
+        "compatibility": {
+          "minimum": "1.0.10",
+          "verified": "1.0.10"
+        }
+      }
+    ]
+  },
   "esmodules": [
     "scripts/main.mjs"
   ],
