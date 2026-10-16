@@ -1,13 +1,12 @@
 $moduleRoot = $PSScriptRoot
-$moduleId = 'fantastic-depths-dm-screen'
-$zipPath = Join-Path $moduleRoot "$moduleId.zip"
+$zipPath = Join-Path $moduleRoot 'module.zip'
 
 $stagingBase = [System.IO.Path]::GetTempPath()
 $stagingPath = Join-Path $stagingBase "fade-dm-screen-release-$([guid]::NewGuid().ToString('N'))"
-$moduleStagingPath = Join-Path $stagingPath $moduleId
+$moduleStagingPath = Join-Path $stagingPath 'fantastic-depths-dm-screen'
 
-$excludeDirNames = @('.git', '.github', '.windsurf', '.vscode', 'node_modules')
-$excludeFileNames = @('.gitignore', 'package-release.ps1', 'monster-name-table.md')
+$excludeDirNames = @('.git', '.github', '.windsurf', '.vscode', '.cursor', '.vs', 'node_modules')
+$excludeFileNames = @('.gitignore', 'package-release.ps1', 'monster-name-table.md', 'release_notes.txt', 'module.zip')
 $excludeFilePatterns = @('*.zip')
 
 try {
