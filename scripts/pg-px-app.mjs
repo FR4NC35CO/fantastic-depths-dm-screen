@@ -17,6 +17,13 @@ import {
   isMystic,
   isDragon
 } from './class-keys.mjs';
+import {
+  resolvePartyActors,
+  getAllPartyActors,
+  isPartyTrackerSource,
+  addActorToPartyTracker,
+  removeActorFromPartyTracker
+} from './party-source.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const MODULE_ID = 'fantastic-depths-dm-screen';
@@ -48,6 +55,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       switchTab: this._onSwitchTab,
       popout: this._onPopout,
       openSheet: this._onOpenSheet,
+      removeFromTracker: this._onRemoveFromTracker,
       calculateShares: this._onCalculateShares,
       storeXP: this._onStoreXP,
       awardNow: this._onAwardNow,
@@ -170,6 +178,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     context.pendingCount = this.pendingCount;
     context.tabs = this._getTabs();
     context.partyData = this._getPartyData();
+    context.usePartyTracker = isPartyTrackerSource();
     context.awardData = this._getAwardData();
     context.pendingData = this._getPendingData();
 
@@ -323,32 +332,63 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   // ==========================================
   
   async _loadActors() {
-    const partyFolder = game.folders?.find(f => 
-      f.type === 'Actor' && f.name.toLowerCase() === 'party'
-    );
-    
-    const seguaciFolder = game.folders?.find(f => 
-      f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name)
-    );
-    
-    const partyActors = partyFolder ? game.actors.contents
-      .filter(actor => 
-        actor.type === 'character' && 
-        !actor.system?.details?.isNPC &&
-        actor.folder?.id === partyFolder.id
-      )
-      .map(actor => this._enrichActorData(actor, false)) : [];
-    
-    const followerActors = seguaciFolder ? game.actors.contents
-      .filter(actor => 
-        actor.type === 'character' && 
-        !actor.system?.details?.isNPC &&
-        actor.folder?.id === seguaciFolder.id &&
-        actor.system?.isRetainer === true
-      )
-      .map(actor => this._enrichActorData(actor, true)) : [];
-    
+    const { actors, followers } = resolvePartyActors();
+    const partyActors = actors.map(actor => this._enrichActorData(actor, false));
+    const followerActors = followers.map(actor => this._enrichActorData(actor, true));
     return [...partyActors, ...followerActors].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /**
+   * In tracker mode, accept Actor drops onto the Party tab (FD Party Tracker parity).
+   */
+  _bindPartyTrackerDrop() {
+    const partyTab = this.element?.querySelector('.fd-ds-tab-content[data-tab="party"]');
+    if (!partyTab) return;
+
+    if (partyTab._partyDropBound) {
+      partyTab.removeEventListener('dragover', partyTab._partyDropBound.dragover);
+      partyTab.removeEventListener('drop', partyTab._partyDropBound.drop);
+      delete partyTab._partyDropBound;
+    }
+
+    if (!isPartyTrackerSource() || !game.user.isGM) return;
+
+    const onDragOver = (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    };
+
+    const onDrop = (event) => this._onPartyTrackerDrop(event);
+
+    partyTab.addEventListener('dragover', onDragOver);
+    partyTab.addEventListener('drop', onDrop);
+    partyTab._partyDropBound = { dragover: onDragOver, drop: onDrop };
+  }
+
+  async _onPartyTrackerDrop(event) {
+    event.preventDefault();
+    if (!isPartyTrackerSource() || !game.user.isGM) return;
+
+    const TextEditorImpl = foundry.applications.ux.TextEditor.implementation;
+    const data = TextEditorImpl.getDragEventData(event);
+
+    if (data.type !== 'Actor' || !data.uuid) {
+      ui.notifications.warn(game.i18n.localize('NOTIFY.PartyDropActorsOnly'));
+      return;
+    }
+
+    let actor;
+    try {
+      actor = await fromUuid(data.uuid);
+      if (!actor || actor.documentName !== 'Actor') return;
+    } catch (err) {
+      console.error(`${MODULE_ID} | Party drop failed:`, err);
+      return;
+    }
+
+    const added = await addActorToPartyTracker(actor.id);
+    if (!added) return;
+    this.render();
   }
   
   _enrichActorData(actor, isFollower) {
@@ -596,6 +636,18 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       actor.sheet.render(true);
     }
   }
+
+  static async _onRemoveFromTracker(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isPartyTrackerSource() || !game.user.isGM) return;
+
+    const actorId = target.dataset.actorId || target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+
+    const removed = await removeActorFromPartyTracker(actorId);
+    if (removed) this.render();
+  }
   
   static async _onRollAbility(event, target) {
     const actorId = target.dataset.actorId;
@@ -780,6 +832,8 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   
   _onRender(context, options) {
     super._onRender(context, options);
+
+    this._bindPartyTrackerDrop();
     
     // Attach change event listener to award-mode select
     const modeSelect = this.element.querySelector('[name="award-mode"]');
@@ -1033,13 +1087,8 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const naMode      = el.querySelector('input[name="enc-na-mode"]:checked')?.value ?? 'wandering';
     const numGroups   = parseInt(el.querySelector('#enc-groups')?.value ?? '1');
 
-    // Collect party actors (including seguaci)
-    const partyFolder   = game.folders?.find(f => f.type === 'Actor' && f.name.toLowerCase() === 'party');
-    const seguaciFolder = game.folders?.find(f => f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name));
-    const actors = [
-      ...(partyFolder   ? game.actors.filter(a => a.type === 'character' && partyFolder.contents?.some(c => c.id === a.id))   : game.actors.filter(a => a.type === 'character')),
-      ...(seguaciFolder ? game.actors.filter(a => a.type === 'character' && seguaciFolder.contents?.some(c => c.id === a.id)) : [])
-    ];
+    // Collect party actors (including retainers) from configured source
+    const actors = getAllPartyActors();
 
     const genBtn = el.querySelector('[data-action="generateEncounter"]');
     if (genBtn) { genBtn.disabled = true; genBtn.textContent = game.i18n.localize('ENCOUNTER.Generating'); }
@@ -1068,12 +1117,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   _updateTplDisplay() {
     const el = this.element;
     if (!el) return;
-    const partyFolder   = game.folders?.find(f => f.type === 'Actor' && f.name.toLowerCase() === 'party');
-    const seguaciFolder = game.folders?.find(f => f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name));
-    const partyActors = [
-      ...(partyFolder   ? game.actors.filter(a => a.type === 'character' && partyFolder.contents?.some(c => c.id === a.id))   : game.actors?.filter(a => a.type === 'character') ?? []),
-      ...(seguaciFolder ? game.actors.filter(a => a.type === 'character' && seguaciFolder.contents?.some(c => c.id === a.id)) : [])
-    ];
+    const partyActors = getAllPartyActors();
     const baseTpl = partyActors.reduce((s, a) => s + Number(a.system?.details?.level ?? 1), 0);
     const tplDisplay = el.querySelector('#enc-tpl-display');
     if (tplDisplay) tplDisplay.textContent = baseTpl || '—';

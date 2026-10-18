@@ -1092,6 +1092,22 @@ function registerSettings() {
     default: 'party'
   });
 
+  // Party membership source: Actor folder vs Fantastic Depths Party Tracker
+  game.settings.register(MODULE_ID, 'partySource', {
+    name: 'SETTINGS.PartySource.Name',
+    hint: 'SETTINGS.PartySource.Hint',
+    scope: 'world',
+    config: true,
+    restricted: true,
+    type: String,
+    choices: {
+      folder: 'SETTINGS.PartySource.Folder',
+      tracker: 'SETTINGS.PartySource.Tracker'
+    },
+    default: 'folder',
+    requiresReload: true
+  });
+
   // Show/hide the on-screen DM Screen book icon (per client, GM-only config)
   game.settings.register(MODULE_ID, 'showActionBarButton', {
     name: 'SETTINGS.ShowActionBarButton.Name',

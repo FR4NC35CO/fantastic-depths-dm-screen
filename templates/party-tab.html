@@ -72,6 +72,9 @@
               </span>
               <span class="character-class">{{actor.class}}{{#if actor.alignment}} <span class="alignment">- ({{actor.alignment}})</span>{{/if}}</span>
             </div>
+            {{#if ../usePartyTracker}}
+            <button type="button" class="party-remove-btn" data-action="removeFromTracker" data-actor-id="{{actor.id}}" data-tooltip="{{localize 'PARTY.RemoveFromTracker'}}" aria-label="{{localize 'PARTY.RemoveFromTracker'}}">×</button>
+            {{/if}}
           </div>
         </td>
         <td class="stat-value ability-roll" data-action="rollAbility" data-ability="str" data-actor-id="{{actor.id}}">{{actor.abilities.str}}</td>
@@ -113,6 +116,9 @@
               </span>
               <span class="character-class">{{actor.class}}{{#if actor.alignment}} <span class="alignment">- ({{actor.alignment}})</span>{{/if}}</span>
             </div>
+            {{#if ../usePartyTracker}}
+            <button type="button" class="party-remove-btn" data-action="removeFromTracker" data-actor-id="{{actor.id}}" data-tooltip="{{localize 'PARTY.RemoveFromTracker'}}" aria-label="{{localize 'PARTY.RemoveFromTracker'}}">×</button>
+            {{/if}}
           </div>
         </td>
         <td class="stat-value ability-roll" data-action="rollAbility" data-ability="str" data-actor-id="{{actor.id}}">{{actor.abilities.str}}</td>
@@ -133,7 +139,12 @@
   </table>
 {{else}}
   <div class="empty-state">
+    {{#if usePartyTracker}}
+    <p>{{localize 'PARTY.NoCharactersTracker'}}</p>
+    <p>{{localize 'PARTY.CreateHintTracker'}}</p>
+    {{else}}
     <p>{{localize 'PARTY.NoCharacters'}}</p>
     <p>{{localize 'PARTY.CreateHint'}}</p>
+    {{/if}}
   </div>
 {{/if}}

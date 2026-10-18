@@ -81,8 +81,7 @@ jobs:
             -x '.cursor/*' \
             -x '.vs/*' \
             -x 'module.zip' \
-            -x 'release_notes.txt' \
-            -x 'package-release.ps1'
+            -x 'release_notes.txt'
 
       - name: Prepare release notes
         if: env.is_valid == 'true'
