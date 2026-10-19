@@ -4,6 +4,26 @@
 // ==========================================
 
 import { executeAcrobaticsCheck } from './acrobatics-check.mjs';
+import { CLASS_EQUIPMENT_KITS } from './pg-generator.mjs';
+import { rollAbilityCheck } from './fade-rolls.mjs';
+import {
+  getClassKey,
+  getClassSpecies,
+  getRaceGroup,
+  getClassIcon,
+  buildClassRequirements,
+  canRaiseDex,
+  hasEquipmentKit,
+  isMystic,
+  isDragon
+} from './class-keys.mjs';
+import {
+  resolvePartyActors,
+  getAllPartyActors,
+  isPartyTrackerSource,
+  addActorToPartyTracker,
+  removeActorFromPartyTracker
+} from './party-source.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 const MODULE_ID = 'fantastic-depths-dm-screen';
@@ -35,6 +55,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       switchTab: this._onSwitchTab,
       popout: this._onPopout,
       openSheet: this._onOpenSheet,
+      removeFromTracker: this._onRemoveFromTracker,
       calculateShares: this._onCalculateShares,
       storeXP: this._onStoreXP,
       awardNow: this._onAwardNow,
@@ -84,6 +105,12 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     this.genStats = { str: 0, int: 0, wis: 0, dex: 0, con: 0, cha: 0 };
     this.genRiserva = 0;
     this.genCurrentClass = null;
+    this.genCurrentClassKey = null;
+    this.genCurrentSpecies = null;
+    this.genCurrentClassItem = null;
+    this.genCurrentClassReqs = null;
+    /** Cached fadeFinder.getClassDefinitions() (one per class key). */
+    this.genClassDefinitions = null;
     
     // Load saved window position
     const savedPosition = localStorage.getItem('fd-ds-position');
@@ -151,8 +178,11 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     context.pendingCount = this.pendingCount;
     context.tabs = this._getTabs();
     context.partyData = this._getPartyData();
+    context.usePartyTracker = isPartyTrackerSource();
     context.awardData = this._getAwardData();
     context.pendingData = this._getPendingData();
+
+    await this._ensureClassDefinitions();
     context.availableClasses = this._getAvailableClasses();
     
     // Generator-specific data
@@ -253,84 +283,48 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     };
   }
   
-  _getAllClasses() {
-    // Get class items from world AND compendiums
-    let allClasses = [];
-    
-    // From world
-    const worldClasses = game.items?.contents?.filter(i => i.type === 'class') || [];
-    allClasses.push(...worldClasses);
-    
-    // From compendiums (use index for better compatibility)
-    for (const pack of game.packs) {
-      if (pack.metadata?.type === 'Item' || pack.documentName === 'Item') {
-        // Get classes from index (doesn't require loading the pack)
-        const packClasses = pack.index?.filter(i => i.type === 'class') || [];
-        for (const cls of packClasses) {
-          // Create a pseudo-item with id and name from index
-          allClasses.push({
-            id: cls._id || cls.id,
-            name: cls.name,
-            type: 'class',
-            compendium: pack.collection
-          });
-        }
-      }
+  /**
+   * Load class definitions via fadeFinder (world then pack). Cache one doc per class key.
+   */
+  async _ensureClassDefinitions(force = false) {
+    if (!force && Array.isArray(this.genClassDefinitions)) return this.genClassDefinitions;
+
+    const docs = await game.fade.fadeFinder.getClassDefinitions();
+    const byKey = new Map();
+    for (const doc of docs || []) {
+      if (doc?.type !== 'class') continue;
+      const key = getClassKey(doc);
+      if (!key || byKey.has(key)) continue; // first wins (world over pack)
+      byKey.set(key, doc);
     }
-    
-    // Deduplicate by name (same logic as original macro)
-    const uniqueClasses = allClasses.filter((item, index, self) => 
-      index === self.findIndex(i => i.name.toLowerCase().trim() === item.name.toLowerCase().trim())
+    this.genClassDefinitions = [...byKey.values()].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '')
     );
-    
-    return uniqueClasses.sort((a, b) => a.name.localeCompare(b.name));
+    return this.genClassDefinitions;
+  }
+
+  _getClassDefinitionsCached() {
+    return Array.isArray(this.genClassDefinitions) ? this.genClassDefinitions : [];
   }
   
   _getAvailableClasses() {
-    const classes = this._getAllClasses();
-    return classes.map(c => ({ id: c.id, name: c.name }));
+    return this._getClassDefinitionsCached().map(c => ({ id: c.id, name: c.name }));
   }
   
   _getDragonClasses() {
-    const classes = this._getAllClasses().filter(c => /dragon|drago/i.test(c.name));
-    return classes.map(c => ({ 
-      id: c.id, 
-      name: c.name
-    }));
+    return this._getClassDefinitionsCached()
+      .filter(c => isDragon(c, getClassSpecies(c)) || /dragon|drago/i.test(c.name || ''))
+      .map(c => ({ id: c.id, name: c.name }));
   }
   
   _getNonDragonClasses() {
-    const classes = this._getAllClasses().filter(c => !/dragon|drago/i.test(c.name));
-    return classes.map(c => ({ id: c.id, name: c.name }));
+    return this._getClassDefinitionsCached()
+      .filter(c => !isDragon(c, getClassSpecies(c)) && !/dragon|drago/i.test(c.name || ''))
+      .map(c => ({ id: c.id, name: c.name }));
   }
   
   _getClassRequirements() {
-    return {
-      'bardo': { primeReq: ['int', 'dex'], min: { dex: 12 }, lowerable: ['str', 'int', 'wis'] },
-      'chierico': { primeReq: ['wis'], min: { wis: 9 }, lowerable: ['str', 'int'] },
-      'cleric': { primeReq: ['wis'], min: { wis: 9 }, lowerable: ['str', 'int'] },
-      'druido': { primeReq: ['wis'], min: { wis: 12 }, lowerable: ['str', 'int'] },
-      'elfo': { primeReq: ['str', 'int'], min: { str: 9, int: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'elf': { primeReq: ['str', 'int'], min: { str: 9, int: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'guerriero': { primeReq: ['str'], min: { str: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'fighter': { primeReq: ['str'], min: { str: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'halfling': { primeReq: ['str', 'dex'], min: { str: 9, dex: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'ladro': { primeReq: ['dex'], min: { dex: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'thief': { primeReq: ['dex'], min: { dex: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'mago': { primeReq: ['int'], min: { int: 9 }, lowerable: ['str', 'wis'] },
-      'mystic': { primeReq: ['str', 'dex'], min: { str: 9, dex: 9 }, lowerable: ['str', 'dex', 'int', 'wis'] },
-      'mistico': { primeReq: ['str', 'dex'], min: { str: 9, dex: 9 }, lowerable: ['str', 'dex', 'int', 'wis'] },
-      'nano': { primeReq: ['str'], min: { str: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'dwarf': { primeReq: ['str'], min: { str: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'paladino': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'paladino (c)': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'paladin': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'paladin (c)': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'vendicatore': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'vendicatore (c)': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'avenger': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'avenger (c)': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] }
-    };
+    return this.genCurrentClassReqs || buildClassRequirements(this.genCurrentClassItem);
   }
 
   // ==========================================
@@ -338,32 +332,63 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   // ==========================================
   
   async _loadActors() {
-    const partyFolder = game.folders?.find(f => 
-      f.type === 'Actor' && f.name.toLowerCase() === 'party'
-    );
-    
-    const seguaciFolder = game.folders?.find(f => 
-      f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name)
-    );
-    
-    const partyActors = partyFolder ? game.actors.contents
-      .filter(actor => 
-        actor.type === 'character' && 
-        !actor.system?.details?.isNPC &&
-        actor.folder?.id === partyFolder.id
-      )
-      .map(actor => this._enrichActorData(actor, false)) : [];
-    
-    const followerActors = seguaciFolder ? game.actors.contents
-      .filter(actor => 
-        actor.type === 'character' && 
-        !actor.system?.details?.isNPC &&
-        actor.folder?.id === seguaciFolder.id &&
-        actor.system?.isRetainer === true
-      )
-      .map(actor => this._enrichActorData(actor, true)) : [];
-    
+    const { actors, followers } = resolvePartyActors();
+    const partyActors = actors.map(actor => this._enrichActorData(actor, false));
+    const followerActors = followers.map(actor => this._enrichActorData(actor, true));
     return [...partyActors, ...followerActors].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /**
+   * In tracker mode, accept Actor drops onto the Party tab (FD Party Tracker parity).
+   */
+  _bindPartyTrackerDrop() {
+    const partyTab = this.element?.querySelector('.fd-ds-tab-content[data-tab="party"]');
+    if (!partyTab) return;
+
+    if (partyTab._partyDropBound) {
+      partyTab.removeEventListener('dragover', partyTab._partyDropBound.dragover);
+      partyTab.removeEventListener('drop', partyTab._partyDropBound.drop);
+      delete partyTab._partyDropBound;
+    }
+
+    if (!isPartyTrackerSource() || !game.user.isGM) return;
+
+    const onDragOver = (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    };
+
+    const onDrop = (event) => this._onPartyTrackerDrop(event);
+
+    partyTab.addEventListener('dragover', onDragOver);
+    partyTab.addEventListener('drop', onDrop);
+    partyTab._partyDropBound = { dragover: onDragOver, drop: onDrop };
+  }
+
+  async _onPartyTrackerDrop(event) {
+    event.preventDefault();
+    if (!isPartyTrackerSource() || !game.user.isGM) return;
+
+    const TextEditorImpl = foundry.applications.ux.TextEditor.implementation;
+    const data = TextEditorImpl.getDragEventData(event);
+
+    if (data.type !== 'Actor' || !data.uuid) {
+      ui.notifications.warn(game.i18n.localize('NOTIFY.PartyDropActorsOnly'));
+      return;
+    }
+
+    let actor;
+    try {
+      actor = await fromUuid(data.uuid);
+      if (!actor || actor.documentName !== 'Actor') return;
+    } catch (err) {
+      console.error(`${MODULE_ID} | Party drop failed:`, err);
+      return;
+    }
+
+    const added = await addActorToPartyTracker(actor.id);
+    if (!added) return;
+    this.render();
   }
   
   _enrichActorData(actor, isFollower) {
@@ -408,8 +433,11 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   _formatMovement(movement) {
     if (!movement) return '-';
     if (typeof movement === 'object') {
-      const turn = movement.turn || 0;
-      const round = movement.round || 0;
+      // Current schema: rates live on movement.modes[n]; legacy flat turn/round still supported
+      const mode = Array.isArray(movement.modes) ? movement.modes[0] : null;
+      const rates = mode || movement;
+      const turn = rates.turn || 0;
+      const round = rates.round || 0;
       if (turn && round) return `${turn}/${round}`;
       return turn || round || '-';
     }
@@ -432,20 +460,10 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
     
     const currentXP = parseInt(details.xp?.value) || 0;
-
-    // Use system-provided xp.next if available and meaningful (> 0)
+    // Only use FaDe/class-provided xp.next — no invented progression table
     const xpNext = parseInt(details.xp?.next) || 0;
-    if (xpNext > 0) {
-      const missing = xpNext - currentXP - pendingXP;
-      return missing > 0 ? missing : 0;
-    }
-    
-    // Fallback: XP table for standard classes (OSE/BX progression)
-    const level = details.level || 1;
-    const xpTable = [0, 2000, 4000, 8000, 16000, 32000, 64000, 120000, 240000, 360000, 480000, 600000, 720000, 840000, 960000, 1080000, 1200000, 1320000, 1440000, 1560000, 1680000];
-    
-    const xpForNextLevel = xpTable[level] || 0;
-    const missing = xpForNextLevel - currentXP - pendingXP;
+    if (!(xpNext > 0)) return 0;
+    const missing = xpNext - currentXP - pendingXP;
     return missing > 0 ? missing : 0;
   }
   
@@ -453,11 +471,8 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!className || className === '-') return false;
     const currentXP = parseInt(details.xp?.value) || 0;
     const xpNext = parseInt(details.xp?.next) || 0;
-    if (xpNext > 0) return (currentXP + pendingXP) >= xpNext;
-    const level = parseInt(details.level) || 1;
-    const xpTable = [0, 2000, 4000, 8000, 16000, 32000, 64000, 120000, 240000, 360000, 480000, 600000, 720000, 840000, 960000, 1080000, 1200000, 1320000, 1440000, 1560000, 1680000];
-    const xpForNextLevel = xpTable[level] || 0;
-    return xpForNextLevel > 0 && (currentXP + pendingXP) >= xpForNextLevel;
+    if (!(xpNext > 0)) return false;
+    return (currentXP + pendingXP) >= xpNext;
   }
 
   _loadPendingXP() {
@@ -621,97 +636,36 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       actor.sheet.render(true);
     }
   }
+
+  static async _onRemoveFromTracker(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isPartyTrackerSource() || !game.user.isGM) return;
+
+    const actorId = target.dataset.actorId || target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+
+    const removed = await removeActorFromPartyTracker(actorId);
+    if (removed) this.render();
+  }
   
   static async _onRollAbility(event, target) {
     const actorId = target.dataset.actorId;
     const ability = target.dataset.ability;
     if (!actorId || !ability) return;
-    
+
     const actor = game.actors.get(actorId);
     if (!actor) return;
-    
-    // Map ability abbreviations to localized labels
-    const abilityLabels = {
-      'str': game.i18n.localize('ABILITY.STR'),
-      'dex': game.i18n.localize('ABILITY.DEX'),
-      'con': game.i18n.localize('ABILITY.CON'),
-      'int': game.i18n.localize('ABILITY.INT'),
-      'wis': game.i18n.localize('ABILITY.WIS'),
-      'cha': game.i18n.localize('ABILITY.CHA'),
-      'ac': 'CA'
-    };
-    
-    const abilityLabel = abilityLabels[ability];
-    if (!abilityLabel) return;
-    
+
     try {
       if (ability === 'ac') {
-        // For AC, just show a notification
         const acValue = actor.system?.ac?.value || target.textContent;
         ui.notifications.info(game.i18n.format('NOTIFY.ACOf', { name: actor.name, value: acValue }));
-      } else {
-        const abilityScore = actor.system?.abilities?.[ability]?.value || 0;
-        const difficultyOptions = [
-          { value: 'easy', label: game.i18n.localize('ABILITY.Easy'), bonus: 4 },
-          { value: 'medium', label: game.i18n.localize('ABILITY.Medium'), bonus: 0 },
-          { value: 'hard', label: game.i18n.localize('ABILITY.Hard'), bonus: -4 }
-        ];
-        const difficultyHTML = difficultyOptions.map(d =>
-          `<option value="${d.value}" data-bonus="${d.bonus}" ${d.value === 'medium' ? 'selected' : ''}>${d.label}</option>`
-        ).join('');
-
-        const dialogTitle = game.i18n.format('ABILITY.DialogTitle', { name: actor.name, ability: abilityLabel });
-        const result = await foundry.applications.api.DialogV2.wait({
-          window: { title: dialogTitle },
-          position: { width: 320 },
-          content: `
-            <div style="padding: 8px 4px;">
-              <div style="margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                <label style="min-width: 140px;">${game.i18n.localize('ABILITY.RollFormula')}</label>
-                <span>1d20</span>
-              </div>
-              <div style="margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                <label style="min-width: 140px;">${game.i18n.localize('ABILITY.Modifier')}</label>
-                <input type="number" id="ability-modifier" value="0" style="width: 70px; text-align: right;">
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <label style="min-width: 140px;">${game.i18n.localize('ABILITY.Difficulty')}</label>
-                <select id="ability-difficulty" style="flex: 1;">${difficultyHTML}</select>
-              </div>
-            </div>`,
-          buttons: [
-            {
-              action: 'roll',
-              label: game.i18n.localize('ABILITY.RollButton'),
-              icon: 'fas fa-dice-d20',
-              default: true,
-              callback: (event, button, dialog) => {
-                const form = button.form ?? dialog;
-                const modifier = parseInt(form.querySelector('#ability-modifier')?.value) || 0;
-                const diffSelect = form.querySelector('#ability-difficulty');
-                const bonus = parseInt(diffSelect?.options[diffSelect.selectedIndex]?.dataset.bonus) || 0;
-                return { modifier, bonus };
-              }
-            }
-          ]
-        });
-
-        if (result) {
-          const { modifier, bonus } = result;
-          const totalMod = modifier + bonus;
-          const formula = totalMod !== 0 ? `1d20${totalMod >= 0 ? '+' : ''}${totalMod}` : '1d20';
-          const roll = new Roll(formula);
-          await roll.evaluate();
-          const success = roll.total <= abilityScore;
-          const successLabel = success ? game.i18n.localize('ABILITY.Success') : game.i18n.localize('ABILITY.Failure');
-          const successText = success ? `<span style="color:#4CAF50;font-weight:bold;">✓ ${successLabel}</span>` : `<span style="color:#F44336;font-weight:bold;">✗ ${successLabel}</span>`;
-          await roll.toMessage({
-            speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `${abilityLabel} (${abilityScore}) — ${successText} (${roll.total} <= ${abilityScore})`,
-            rollMode: game.settings.get('core', 'messageMode')
-          });
-        }
+        return;
       }
+
+      // FaDe abilityCheck (dialog + userTables difficulty-levels). Ctrl skips dialog.
+      await rollAbilityCheck(actor, ability, event);
     } catch (err) {
       console.error(`${MODULE_ID} | Error rolling ability:`, err);
       ui.notifications.error(game.i18n.format('NOTIFY.RollError', { ability: ability, message: err.message }));
@@ -750,34 +704,17 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       .map(cb => cb.dataset.actorId);
     
     if (selectedActorIds.length === 0) {
-      ui.notifications.warn('Nessun personaggio selezionato');
+      ui.notifications.warn(game.i18n.localize('REQUEST.NoCharactersSelected'));
       return;
     }
     
-    // Get difficulty and bonus
-    const difficultySelect = this.element.querySelector('#request-difficulty');
-    const difficulty = difficultySelect?.value || 'medium';
-    const difficultyBonusMap = {
-      'easy': -4,
-      'medium': 0,
-      'hard': 4,
-      'veryhard': 8,
-      'absurd': 12
-    };
-    const difficultyBonus = difficultyBonusMap[difficulty] || 0;
-    
-    // Get show DC option
-    const showDC = this.element.querySelector('#request-show-dc')?.checked || false;
-    
-    // Get roll mode from toggle icon
+    // Roll mode from toggle (visibility of the request message itself)
     const rollModeToggle = this.element.querySelector('[data-action="toggleRequestRollMode"]');
     const isPublic = rollModeToggle?.getAttribute('data-public') === 'true';
     const rollMode = isPublic ? 'public' : 'blind';
-    
-    // Get flavour
+
     const flavour = this.element.querySelector('#request-flavour')?.value || '';
-    
-    // Get selected roll types
+
     const selectedRollTypes = Array.from(this.element.querySelectorAll('.request-roll-type:checked'))
       .map(cb => ({
         type: cb.dataset.type,
@@ -786,34 +723,21 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         skill: cb.dataset.skill,
         roll: cb.dataset.roll
       }));
-    
+
     if (selectedRollTypes.length === 0) {
       ui.notifications.warn(game.i18n.localize('REQUEST.SelectRollType'));
       return;
     }
 
-    // Build roll request message
     const abilityLabelMap = {
-      'str': 'STR',
-      'dex': 'DEX',
-      'int': 'INT',
-      'wis': 'WIS',
-      'con': 'CON',
-      'cha': 'CHA'
+      str: 'STR',
+      dex: 'DEX',
+      int: 'INT',
+      wis: 'WIS',
+      con: 'CON',
+      cha: 'CHA'
     };
 
-    const difficultyLabel = game.i18n.localize(`REQUEST.${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`);
-    const difficultyText = showDC ? `${difficultyLabel} (bonus: ${difficultyBonus >= 0 ? '+' : ''}${difficultyBonus})` : `${difficultyLabel} (bonus: ???)`;
-
-    const rollTypesText = selectedRollTypes.map(rt => {
-      if (rt.type === 'ability') return abilityLabelMap[rt.ability] || rt.ability?.toUpperCase();
-      if (rt.type === 'save') return rt.save;
-      if (rt.type === 'exploration') return rt.skill;
-      if (rt.type === 'roll') return rt.roll;
-      return rt.type;
-    }).join(', ');
-
-    // Determine the header text based on the type of roll selected
     let headerText = game.i18n.localize('REQUEST.MsgMultipleRolls');
     if (selectedRollTypes.length > 0) {
       const firstType = selectedRollTypes[0];
@@ -822,20 +746,21 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         headerText = game.i18n.format('REQUEST.MsgAbilityCheck', { ability: abilityLabel });
       } else if (firstType.type === 'save') {
         const saveKeyMap = {
-          'wand': 'REQUEST.WandSave',
-          'spell': 'REQUEST.SpellSave',
-          'stone': 'REQUEST.PetrificationSave',
-          'breath': 'REQUEST.BreathSave',
-          'death': 'REQUEST.DeathSave'
+          wand: 'REQUEST.WandSave',
+          spell: 'REQUEST.SpellSave',
+          petrification: 'REQUEST.PetrificationSave',
+          stone: 'REQUEST.PetrificationSave',
+          breath: 'REQUEST.BreathSave',
+          death: 'REQUEST.DeathSave'
         };
         const saveLabel = game.i18n.localize(saveKeyMap[firstType.save]) || firstType.save;
         headerText = game.i18n.format('REQUEST.MsgSavingThrow', { save: saveLabel });
       } else if (firstType.type === 'exploration') {
         const skillKeyMap = {
-          'findSecretDoors': 'REQUEST.FindSecretDoors',
-          'forceOpenDoors': 'REQUEST.ForceOpenDoors',
-          'listenAtDoors': 'REQUEST.ListenAtDoors',
-          'findTraps': 'REQUEST.FindTraps'
+          findSecretDoors: 'REQUEST.FindSecretDoors',
+          forceOpenDoors: 'REQUEST.ForceOpenDoors',
+          listenAtDoors: 'REQUEST.ListenAtDoors',
+          findTraps: 'REQUEST.FindTraps'
         };
         const skillLabel = game.i18n.localize(skillKeyMap[firstType.skill]) || firstType.skill;
         headerText = game.i18n.format('REQUEST.MsgExploration', { skill: skillLabel });
@@ -844,9 +769,8 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const rollModeText = game.i18n.localize(rollMode === 'blind' ? 'REQUEST.MsgBlind' : 'REQUEST.MsgPublic');
     const d20Icon = 'icons/svg/d20-grey.svg';
-    
     const requestId = `roll-request-${Date.now()}`;
-    
+
     const messageContent = `
       <div class="roll-request-message" id="${requestId}">
         <h3>${headerText} ${rollModeText}</h3>
@@ -856,24 +780,20 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
           const actor = this.actors.find(a => a.id === actorId);
           if (!actor) return '';
           return `<div class="roll-request-character" data-actor-id="${actor.id}" data-request-id="${requestId}">
-            <img src="${d20Icon}" class="roll-request-icon" data-action="rollRequest" data-actor-id="${actor.id}" data-request-id="${requestId}" data-difficulty="${difficulty}" data-difficulty-bonus="${difficultyBonus}" data-show-dc="${showDC}" data-roll-mode="${rollMode}" data-roll-types='${JSON.stringify(selectedRollTypes)}' data-flavour="${flavour}">
+            <img src="${d20Icon}" class="roll-request-icon" data-action="rollRequest" data-actor-id="${actor.id}" data-request-id="${requestId}" data-roll-mode="${rollMode}" data-roll-types='${JSON.stringify(selectedRollTypes)}' data-flavour="${flavour}">
             <strong>${actor.name}</strong> (${actor.class})
           </div>`;
         }).join('')}
       </div>
     `;
-    
-    // Send message to chat
-    const speaker = ChatMessage.getSpeaker();
-    const messageData = {
-      speaker: speaker,
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker(),
       content: messageContent,
       whisper: rollMode === 'blind' ? [game.user.id] : [],
       blind: rollMode === 'blind'
-    };
-    
-    await ChatMessage.create(messageData);
-    ui.notifications.info(`Richiesta inviata a ${selectedActorIds.length} personaggi`);
+    });
+    ui.notifications.info(game.i18n.format('REQUEST.SentToCount', { count: selectedActorIds.length }));
   }
 
   static async _onToggleChatVisibility(event, target) {
@@ -912,6 +832,8 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   
   _onRender(context, options) {
     super._onRender(context, options);
+
+    this._bindPartyTrackerDrop();
     
     // Attach change event listener to award-mode select
     const modeSelect = this.element.querySelector('[name="award-mode"]');
@@ -1165,13 +1087,8 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const naMode      = el.querySelector('input[name="enc-na-mode"]:checked')?.value ?? 'wandering';
     const numGroups   = parseInt(el.querySelector('#enc-groups')?.value ?? '1');
 
-    // Collect party actors (including seguaci)
-    const partyFolder   = game.folders?.find(f => f.type === 'Actor' && f.name.toLowerCase() === 'party');
-    const seguaciFolder = game.folders?.find(f => f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name));
-    const actors = [
-      ...(partyFolder   ? game.actors.filter(a => a.type === 'character' && partyFolder.contents?.some(c => c.id === a.id))   : game.actors.filter(a => a.type === 'character')),
-      ...(seguaciFolder ? game.actors.filter(a => a.type === 'character' && seguaciFolder.contents?.some(c => c.id === a.id)) : [])
-    ];
+    // Collect party actors (including retainers) from configured source
+    const actors = getAllPartyActors();
 
     const genBtn = el.querySelector('[data-action="generateEncounter"]');
     if (genBtn) { genBtn.disabled = true; genBtn.textContent = game.i18n.localize('ENCOUNTER.Generating'); }
@@ -1193,19 +1110,14 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     } catch (e) {
       console.error(`${MODULE_ID} | Encounter generation error:`, e);
       if (genBtn) { genBtn.disabled = false; genBtn.textContent = game.i18n.localize('ENCOUNTER.GenerateBtn'); }
-      ui.notifications.error('Encounter generation failed. See console for details.');
+      ui.notifications.error(game.i18n.localize('NOTIFY.EncounterGenerationFailed'));
     }
   }
 
   _updateTplDisplay() {
     const el = this.element;
     if (!el) return;
-    const partyFolder   = game.folders?.find(f => f.type === 'Actor' && f.name.toLowerCase() === 'party');
-    const seguaciFolder = game.folders?.find(f => f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name));
-    const partyActors = [
-      ...(partyFolder   ? game.actors.filter(a => a.type === 'character' && partyFolder.contents?.some(c => c.id === a.id))   : game.actors?.filter(a => a.type === 'character') ?? []),
-      ...(seguaciFolder ? game.actors.filter(a => a.type === 'character' && seguaciFolder.contents?.some(c => c.id === a.id)) : [])
-    ];
+    const partyActors = getAllPartyActors();
     const baseTpl = partyActors.reduce((s, a) => s + Number(a.system?.details?.level ?? 1), 0);
     const tplDisplay = el.querySelector('#enc-tpl-display');
     if (tplDisplay) tplDisplay.textContent = baseTpl || '—';
@@ -2090,7 +2002,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (game.fade?.registry?.getSystem('wrestling')?.showWrestlingDialog) {
       game.fade.registry.getSystem('wrestling').showWrestlingDialog();
     } else {
-      ui.notifications.warn('Wrestling system not available.');
+      ui.notifications.warn(game.i18n.localize('NOTIFY.WrestlingUnavailable'));
     }
   }
   
@@ -2099,7 +2011,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (game.fade?.registry?.getSystem('shove')?.showShoveDialog) {
       game.fade.registry.getSystem('shove').showShoveDialog();
     } else {
-      ui.notifications.warn('Shove system not available.');
+      ui.notifications.warn(game.i18n.localize('NOTIFY.ShoveUnavailable'));
     }
   }
   
@@ -2118,7 +2030,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (game.fade?.LightManager?.showLightDialog) {
       game.fade.LightManager.showLightDialog();
     } else {
-      ui.notifications.warn('Light Manager not available.');
+      ui.notifications.warn(game.i18n.localize('NOTIFY.LightManagerUnavailable'));
     }
   }
   
@@ -2235,10 +2147,15 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   
   // Send character summary to chat (visible only to GM)
   static async _sendCharacterSummaryToChat(actor) {
-    const useMetric = game.i18n.lang === 'it';
+    const useMetric = game.settings.get(MODULE_ID, 'useMetric');
 
     // Get character data
-    const className = actor.system?.details?.class?.name || actor.items.find(i => i.type === 'class')?.name || 'Sconosciuta';
+    const classItem = actor.items.find(i => i.type === 'class');
+    const className = (typeof actor.system?.details?.class === 'string'
+      ? actor.system.details.class
+      : actor.system?.details?.class?.name)
+      || classItem?.name
+      || 'Sconosciuta';
     const level = actor.system?.details?.level || 1;
     // Get alignment (stored as full string in FaDe system) and translate
     const alignmentRaw = actor.system?.details?.alignment || actor.system?.alignment || '-';
@@ -2260,27 +2177,13 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const sexFull = actor.system?.details?.sex || '-';
     const sex = sexMap[sexFull] || sexFull;
     
-    // Get class icon based on class name
-    const classIcons = {
-      'guerriero': '⚔️', 'fighter': '⚔️',
-      'mago': '🧙‍♂️', 'magic-user': '🧙‍♂️', 'wizard': '🧙‍♂️',
-      'chierico': '⛪', 'cleric': '⛪',
-      'ladro': '🗡️', 'thief': '🗡️', 'rogue': '🗡️',
-      'paladino': '🛡️', 'paladin': '🛡️',
-      'vendicatore': '⚡', 'avenger': '⚡',
-      'druido': '🌿', 'druid': '🌿',
-      'bardo': '🎵', 'bard': '🎵',
-      'mistico': '👁️', 'mystic': '👁️', 'monk': '👁️',
-      'elfo': '🏹', 'elf': '🏹',
-      'nano': '⛏️', 'dwarf': '⛏️',
-      'halfling': '🍃',
-      'drago': '🐉', 'dragon': '🐉'
-    };
-    const classKey = className.toLowerCase();
-    const classIcon = classIcons[classKey] || '👤';
+    // Class icon from non-localized class key
+    const classKey = getClassKey(actor.system?.details?.classKey || classItem);
+    const classIcon = getClassIcon(classKey);
     const height = actor.system?.details?.height || '-';
     const weight = actor.system?.details?.weight || '-';
-    const movement = actor.system?.movement?.max || (useMetric ? 36 : 120);
+    const mode0 = actor.system?.movement?.modes?.[0];
+    const movement = mode0?.turn || mode0?.base || actor.system?.movement?.max || (useMetric ? 36 : 120);
     const hp = actor.system?.hp?.max || 0;
     const ac = actor.system?.ac?.value || 0;
     const thac0 = actor.system?.thac0?.value || 0;
@@ -2510,46 +2413,50 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     
     const classId = selectedOption.value;
     
-    // Get class name from selected option text
-    let className = null;
-    if (classId && classId !== '__RANDOM__') {
-      className = selectedOption.text?.toLowerCase()?.trim();
-    }
-    this.genCurrentClass = className;
+    this.genCurrentClass = null;
+    this.genCurrentClassKey = null;
+    this.genCurrentSpecies = null;
+    this.genCurrentClassItem = null;
+    this.genCurrentClassReqs = null;
     
     if (!classId || classId === '__RANDOM__') {
       PGPXManagerApp._updateStatStyles.call(this);
       return;
     }
     
-    // Get class item from compendium to retrieve maxLevel
-    let maxLevel = 36; // default
-    let startLevel = 1; // default
+    // Load class document via fadeFinder (same source as chargen / sheet mins)
+    let maxLevel = 36;
+    let startLevel = 1;
+    let classAlignment = 'Any';
     
     try {
-      // Search for the class in compendiums
-      for (const pack of game.packs) {
-        if (pack.metadata?.type === 'Item' || pack.documentName === 'Item') {
-          const classItem = await pack.getDocument(classId);
-          if (classItem && classItem.type === 'class') {
-            const classSystem = classItem.system || {};
-            // Get maxLevel from class system data
-            if (classSystem.maxLevel) {
-              maxLevel = parseInt(classSystem.maxLevel) || 36;
-            } else if (classSystem.levels && Array.isArray(classSystem.levels)) {
-              maxLevel = classSystem.levels.length;
-            }
-            // Check for special classes that start at level 9
-            const classNameLower = classItem.name?.toLowerCase() || '';
-            if (/paladino|paladin|vendicatore|avenger|druido|druid/.test(classNameLower)) {
-              startLevel = 9;
-            }
-            break;
-          }
+      await this._ensureClassDefinitions();
+      let classItem = this._getClassDefinitionsCached().find(c => c.id === classId || c._id === classId);
+      const key = classItem ? getClassKey(classItem) : null;
+      if (key) {
+        classItem = (await game.fade.fadeFinder.getClass(null, key)) || classItem;
+      } else if (classItem?.name) {
+        classItem = (await game.fade.fadeFinder.getClass(classItem.name)) || classItem;
+      }
+
+      if (classItem && classItem.type === 'class') {
+        const classSystem = classItem.system || {};
+        this.genCurrentClassItem = classItem;
+        this.genCurrentClassKey = getClassKey(classItem);
+        this.genCurrentSpecies = getClassSpecies(classItem);
+        this.genCurrentClass = this.genCurrentClassKey;
+        this.genCurrentClassReqs = buildClassRequirements(classItem);
+        classAlignment = classSystem.alignment || 'Any';
+
+        if (classSystem.maxLevel) {
+          maxLevel = parseInt(classSystem.maxLevel) || 36;
+        } else if (classSystem.levels && Array.isArray(classSystem.levels)) {
+          maxLevel = classSystem.levels.length;
         }
+        startLevel = Math.max(1, parseInt(classSystem.firstLevel) || 1);
       }
     } catch (err) {
-      console.warn(`${MODULE_ID} | ⚠️ Could not retrieve class maxLevel:`, err);
+      console.warn(`${MODULE_ID} | Could not load class definition:`, err);
     }
     
     // Update level dropdown with correct maxLevel
@@ -2566,21 +2473,12 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       levelSelect.innerHTML = html;
     }
     
-    // Update height dropdown based on class race
+    // Update height dropdown based on class species
     const heightSelect = form?.querySelector('#char-height');
-    if (heightSelect && this.genCurrentClass) {
-      const normalizedClass = this.genCurrentClass.toLowerCase();
-      let raceGroup = 'height-human'; // default
+    if (heightSelect && this.genCurrentClassKey) {
+      const race = getRaceGroup(this.genCurrentClassKey, this.genCurrentSpecies);
+      const raceGroup = `height-${race}`;
       
-      if (/nano|dwarf/.test(normalizedClass)) {
-        raceGroup = 'height-dwarf';
-      } else if (/elfo|elf/.test(normalizedClass)) {
-        raceGroup = 'height-elf';
-      } else if (/halfling/.test(normalizedClass)) {
-        raceGroup = 'height-halfling';
-      }
-      
-      // Show only options for the selected race, hide others
       const allOptions = heightSelect.querySelectorAll('option');
       const allOptgroups = heightSelect.querySelectorAll('optgroup');
       
@@ -2605,7 +2503,6 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
       });
       
-      // Reset to random if current selection is not valid for new race
       const currentHeight = heightSelect.value;
       if (currentHeight !== '__RANDOM__') {
         const selectedOpt = heightSelect.querySelector(`option[value="${currentHeight}"]`);
@@ -2614,56 +2511,55 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
       }
       
-      // Update display text for metric system
       this._updateHeightDropdownForMetric();
     }
     
-    // Update styles only - riserva should only change when user manually lowers stats
     PGPXManagerApp._updateStatStyles.call(this);
     
-    // Auto-set alignment based on class restrictions
+    // Auto-set alignment from class.system.alignment / mystic special case
     const alignmentSelect = form?.querySelector('#char-alignment');
-    if (alignmentSelect && className) {
-      const normalizedClass = className.toLowerCase();
-      
-      // Remove any special options that might have been added previously (e.g., Mystic's 75% option)
+    if (alignmentSelect && this.genCurrentClassKey) {
       const specialOption = alignmentSelect.querySelector('option[value="__RANDOM_MISTIC__"]');
       if (specialOption) {
         specialOption.remove();
       }
       
-      // Paladino and Chierico are always Lawful
-      if (normalizedClass.includes('paladino') || normalizedClass.includes('paladin') ||
-          normalizedClass.includes('chierico') || normalizedClass.includes('cleric')) {
-        alignmentSelect.value = 'Lawful';
-      }
-      // Vendicatore is always Chaotic
-      else if (normalizedClass.includes('vendicatore') || normalizedClass.includes('avenger')) {
-        alignmentSelect.value = 'Chaotic';
-      }
-      // Mistico/Monk is 75% Lawful (random) - add special option
-      else if (normalizedClass.includes('mistico') || normalizedClass.includes('mystic')) {
+      // Alignment from class.system.alignment; mystic keeps special 75% Lawful UI option
+      if (isMystic(this.genCurrentClassKey)) {
         const option = document.createElement('option');
         option.value = '__RANDOM_MISTIC__';
         option.text = `🎲 75% ${game.i18n.localize('ALIGNMENT.Lawful')}`;
         option.selected = true;
         alignmentSelect.appendChild(option);
         alignmentSelect.value = '__RANDOM_MISTIC__';
-      }
-      // No alignment restrictions - reset to random if it was a restricted value
-      else {
+      } else if (classAlignment === 'Lawful') {
+        alignmentSelect.value = 'Lawful';
+      } else if (classAlignment === 'Chaotic') {
+        alignmentSelect.value = 'Chaotic';
+      } else if (classAlignment === 'Neutral') {
+        alignmentSelect.value = 'Neutral';
+      } else {
         const currentAlignment = alignmentSelect.value;
-        // If current alignment is a fixed value (Lawful/Chaotic) or the Mystic special option, reset to random
-        if (currentAlignment === 'Lawful' || currentAlignment === 'Chaotic' || currentAlignment === '__RANDOM_MISTIC__') {
+        if (currentAlignment === 'Lawful' || currentAlignment === 'Chaotic' || currentAlignment === 'Neutral' || currentAlignment === '__RANDOM_MISTIC__') {
           alignmentSelect.value = '__RANDOM__';
         }
       }
     }
     
-    // Auto-select "Kit Classe" equipment option when class is selected
+    // Class kit is optional: only offer/select it when a kit exists for this class key
     const equipmentSelect = form?.querySelector('#char-equipment');
+    const kitOption = form?.querySelector('#class-kit-option');
     if (equipmentSelect && classId && classId !== '__RANDOM__') {
-      equipmentSelect.value = '__CLASS_KIT__';
+      const hasKit = hasEquipmentKit(CLASS_EQUIPMENT_KITS, this.genCurrentClassKey);
+      if (kitOption) {
+        kitOption.hidden = !hasKit;
+        kitOption.disabled = !hasKit;
+      }
+      if (hasKit) {
+        equipmentSelect.value = '__CLASS_KIT__';
+      } else if (equipmentSelect.value === '__CLASS_KIT__') {
+        equipmentSelect.value = '__NONE__';
+      }
     }
   }
   
@@ -2696,7 +2592,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const heightSelect = this.element.querySelector('#char-height');
     if (!heightSelect) return;
 
-    const useMetric = game.i18n.lang === 'it';
+    const useMetric = game.settings.get(MODULE_ID, 'useMetric');
     const allOptions = heightSelect.querySelectorAll('option');
     
     allOptions.forEach((opt) => {
@@ -2742,29 +2638,10 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       return;
     }
     
-    // Get class name from stored value (set in _onClassChange)
-    let className = this.genCurrentClass;
-    
-    // If not stored, try to get it from the selected option text
-    if (!className && classSelect) {
-      const selectedOption = classSelect.options[classSelect.selectedIndex];
-      if (selectedOption) {
-        className = selectedOption.text?.toLowerCase();
-      }
-    }
-    
-    // If still not found, try game.items (for world classes)
-    if (!className) {
-      const classItem = game.items.get(classId);
-      className = classItem?.name?.toLowerCase();
-    }
-    
-    // If still not found, use empty requirements (basic functionality)
-    let req = null;
-    if (className) {
-      const requirements = PGPXManagerApp._getClassRequirementsData();
-      req = requirements[className];
-    }
+    // Requirements from loaded FaDe class item
+    const req = this.genCurrentClassReqs
+      || buildClassRequirements(this.genCurrentClassItem)
+      || null;
     
     let riserva = 0;
     
@@ -2794,9 +2671,6 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const stats = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
     // CON and CHA can NEVER be lowered or raised via exchange (official rules)
     const unlowerableStats = ['con', 'cha'];
-    // Classes that can raise DEX (must have DEX as prime requisite)
-    // Bardo, Ladro, Halfling, Mistico have DEX as prime requisite
-    const dexRaisingClasses = ['bardo', 'ladro', 'thief', 'halfling', 'mistico', 'mystic'];
     
     stats.forEach(stat => {
       const plusBtn = form.querySelector(`.gen-stat-plus[data-stat="${stat}"]`);
@@ -2813,13 +2687,11 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return;
       }
       
-      // DEX special rule: cannot be lowered, can only be raised for specific classes
+      // DEX special rule: cannot be lowered, can only be raised for specific class keys
       if (stat === 'dex') {
         minusBtn.disabled = true; // DEX can never be lowered
-        // DEX can only be raised for Bardo, Ladro, Halfling, Mistico
-        const canRaiseDex = req?.primeReq?.includes('dex') && 
-                            dexRaisingClasses.some(c => this.genCurrentClass?.includes(c));
-        if (canRaiseDex) {
+        const allowDexRaise = canRaiseDex(req);
+        if (allowDexRaise) {
           plusBtn.disabled = val >= 18 || riserva < 1; // Cost 1 reserve point per 1 DEX increase
         } else {
           plusBtn.disabled = true; // Cannot raise DEX for other classes
@@ -2861,36 +2733,8 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
       return;
     }
     
-    // Get class name directly from selected option by value - most reliable method
-    let className = null;
-    if (classSelect && classId) {
-      const selectedOption = Array.from(classSelect.options).find(opt => opt.value === classId);
-      if (selectedOption) {
-        className = selectedOption.text?.toLowerCase()?.trim();
-      }
-    }
-    
-    // Fallback to stored value if available
-    if (!className && this.genCurrentClass) {
-      className = this.genCurrentClass;
-    }
-    
-    // Last resort: try game.items (for world classes)
-    if (!className) {
-      const classItem = game.items.get(classId);
-      className = classItem?.name?.toLowerCase()?.trim();
-    }
-    
-    if (!className) return;
-    
-    const requirements = PGPXManagerApp._getClassRequirementsData();
-    // Try exact match first, then partial match
-    let req = requirements[className];
-    if (!req) {
-      // Try matching by partial name (e.g., "guerriero" matches "guerriero (variant)")
-      const matchingKey = Object.keys(requirements).find(k => className.includes(k) || k.includes(className));
-      if (matchingKey) req = requirements[matchingKey];
-    }
+    const req = this.genCurrentClassReqs || buildClassRequirements(this.genCurrentClassItem);
+    if (!req || (!this.genCurrentClassKey && !this.genCurrentClassItem)) return;
     
     const stats = ['str', 'int', 'wis', 'dex', 'con', 'cha'];
     const riservaInput = form.querySelector('#riserva-points');
@@ -2927,15 +2771,12 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return;
       }
       
-      // DEX special rule: cannot be lowered, can only be raised for specific classes
+      // DEX special rule: cannot be lowered, can only be raised for specific class keys
       if (stat === 'dex') {
         if (plusBtn && minusBtn) {
           minusBtn.disabled = true; // DEX can never be lowered
-          // DEX can only be raised for Bardo, Ladro, Halfling, Mistico
-          const dexRaisingClasses = ['bardo', 'ladro', 'thief', 'halfling', 'mistico', 'mystic'];
-          const canRaiseDex = req?.primeReq?.includes('dex') && 
-                              dexRaisingClasses.some(c => this.genCurrentClass?.includes(c));
-          if (canRaiseDex) {
+          const allowDexRaise = canRaiseDex(req);
+          if (allowDexRaise) {
             plusBtn.disabled = val >= 18 || riserva < 1; // Cost 1 reserve point per 1 DEX increase
           } else {
             plusBtn.disabled = true;
@@ -2993,32 +2834,7 @@ export class PGPXManagerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
   
   static _getClassRequirementsData() {
-    return {
-      'bardo': { primeReq: ['int', 'dex'], min: { dex: 12 }, lowerable: ['str', 'int', 'wis'] },
-      'chierico': { primeReq: ['wis'], min: { wis: 9 }, lowerable: ['str', 'int'] },
-      'cleric': { primeReq: ['wis'], min: { wis: 9 }, lowerable: ['str', 'int'] },
-      'druido': { primeReq: ['wis'], min: { wis: 12 }, lowerable: ['str', 'int'] },
-      'elfo': { primeReq: ['str', 'int'], min: { str: 9, int: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'elf': { primeReq: ['str', 'int'], min: { str: 9, int: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'guerriero': { primeReq: ['str'], min: { str: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'fighter': { primeReq: ['str'], min: { str: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'halfling': { primeReq: ['str', 'dex'], min: { str: 9, dex: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'ladro': { primeReq: ['dex'], min: { dex: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'thief': { primeReq: ['dex'], min: { dex: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'mago': { primeReq: ['int'], min: { int: 9 }, lowerable: ['str', 'wis'] },
-      'mystic': { primeReq: ['str', 'dex'], min: { str: 9, dex: 9 }, lowerable: ['str', 'dex', 'int', 'wis'] },
-      'mistico': { primeReq: ['str', 'dex'], min: { str: 9, dex: 9 }, lowerable: ['str', 'dex', 'int', 'wis'] },
-      'nano': { primeReq: ['str'], min: { str: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'dwarf': { primeReq: ['str'], min: { str: 9 }, lowerable: ['str', 'int', 'wis'] },
-      'paladino': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'paladino (c)': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'paladin': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'paladin (c)': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'vendicatore': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'vendicatore (c)': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'avenger': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] },
-      'avenger (c)': { primeReq: ['str', 'wis'], min: { str: 9, wis: 13 }, lowerable: ['str', 'int'] }
-    };
+    return this.genCurrentClassReqs || buildClassRequirements(this.genCurrentClassItem);
   }
   
   // Calculate ability modifier based on score

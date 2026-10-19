@@ -1,6 +1,6 @@
 # Fantastic Depths DM Screen
 
-![Foundry VTT](https://img.shields.io/badge/Foundry_VTT-v13_|_v14-brightgreen)
+![Foundry VTT](https://img.shields.io/badge/Foundry_v14-brightgreen)
 ![System](https://img.shields.io/badge/System-Fantastic_Depths-orange)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
@@ -14,10 +14,9 @@
 Foundry VTT module for Party management, Experience Points (XP) distribution, Encounter and character generation for the **Fantastic Depths** system with BECMI and Rules Cyclopedia rules.
 
 ### Compatibility
-- **Foundry VTT**: v13 and v14
-- **System Requirements**: Fantastic Depths v1.2.8
-- **Modules Requirements**: Fantastic Depths Compendiums v1.0.10
-- **Module Version**: 1.2.8
+- **Foundry VTT**: v14
+- **System Requirements**: Fantastic Depths
+- **Modules Requirements**: Fantastic Depths Compendiums
 
 ### Installation
 #### Method 1: Manifest URL (Recommended)

@@ -3,6 +3,8 @@
 // RC Rules: Balancing Encounters (Chapter 7)
 // ==========================================
 
+import { getTrackerActorIds, isPartyTrackerSource } from './party-source.mjs';
+
 const MODULE_ID = 'fantastic-depths-dm-screen';
 
 // ── Challenge tables (RC) ────────────────────────────────────────────────────
@@ -713,7 +715,7 @@ export class EncounterGenerator {
       }
     }
 
-    // 2) World actors — exclude Party and Retainers folders
+    // 2) World actors — exclude Party and Retainers folders (and tracker party in tracker mode)
     const excludedFolders = new Set(
       game.folders?.filter(f =>
         f.type === 'Actor' &&
@@ -721,9 +723,14 @@ export class EncounterGenerator {
       ).map(f => f.id) ?? []
     );
 
+    const excludedTrackerIds = isPartyTrackerSource()
+      ? new Set(getTrackerActorIds())
+      : null;
+
     for (const actor of game.actors ?? []) {
       if (actor.type === 'character') continue;
       if (excludedFolders.has(actor.folder?.id)) continue;
+      if (excludedTrackerIds?.has(actor.id)) continue;
 
       monsters.push({
         id: actor.id,

@@ -7,6 +7,7 @@
 import { PGPXManagerApp } from './pg-px-app.mjs';
 import { PGGenerator } from './pg-generator.mjs';
 import { PXManager } from './px-manager.mjs';
+import { rollAbilityCheck, rollSavingThrow, rollExploration } from './fade-rolls.mjs';
 
 const MODULE_ID = 'fantastic-depths-dm-screen';
 
@@ -20,318 +21,50 @@ globalThis.combatants = new Set();
 
 // ==========================================
 // Roll Request Handler - Gestore Richieste Tiro
+// Delegates to FaDe registry / item.roll (no invent formulas)
 // ==========================================
 
-async function executeRollRequest(actor, rollType, difficultyBonus, showDC, rollMode, flavour) {
+/**
+ * @param {Actor} actor
+ * @param {{ type: string, ability?: string, save?: string, skill?: string, roll?: string }} rollType
+ * @param {Event|null} sourceEvent
+ * @returns {Promise<{ rolled: boolean }>}
+ */
+async function executeRollRequest(actor, rollType, sourceEvent = null) {
   const { type, ability, save, skill, roll } = rollType;
-  const difficultyText = showDC ? `bonus difficoltà: ${difficultyBonus >= 0 ? '+' : ''}${difficultyBonus}` : 'bonus difficoltà: ???';
-  const flavorText = flavour ? `${flavour} (${difficultyText})` : difficultyText;
-  
-  // Ability abbreviation mapping - Mappa abbreviazioni caratteristiche
-  const abilityLabelMap = {
-    'str': game.i18n.lang === 'it' ? 'FOR' : 'STR',
-    'dex': game.i18n.lang === 'it' ? 'DES' : 'DEX',
-    'int': game.i18n.lang === 'it' ? 'INT' : 'INT',
-    'wis': game.i18n.lang === 'it' ? 'SAG' : 'WIS',
-    'con': game.i18n.lang === 'it' ? 'COS' : 'CON',
-    'cha': game.i18n.lang === 'it' ? 'CAR' : 'CHA'
-  };
-  
+
   try {
     if (type === 'ability' && ability) {
-      // Roll ability check - Success if 1d20 + bonus difficulty <= ability value
-      const abilityData = actor.system?.abilities?.[ability];
-      const abilityValue = abilityData?.value || 0;
-      
-      const formula = `1d20${difficultyBonus >= 0 ? '+' : ''}${difficultyBonus}`;
-      const rollResult = new Roll(formula);
-      await rollResult.evaluate();
-      
-      const success = rollResult.total <= abilityValue;
-      const successText = success ? (game.i18n.lang === 'it' ? 'Successo' : 'Success') : (game.i18n.lang === 'it' ? 'Fallimento' : 'Failed');
-      const successIcon = success ? '<span style="color: #4CAF50; font-weight: bold; font-size: 1.2em;">✓</span>' : '<span style="color: #F44336; font-weight: bold; font-size: 1.2em;">✗</span>';
-      
-      const abilityLabel = abilityLabelMap[ability] || ability.toUpperCase();
-      
-      rollResult.toMessage({
-        speaker: ChatMessage.getSpeaker({ actor }),
-        flavor: `${successIcon} ${abilityLabel} ${formula} - ${successText} (${rollResult.total} <= ${abilityValue})`,
-        rollMode: rollMode
-      });
-      
-      return { success };
-      
-    } else if (type === 'save' && save) {
-      // Roll FaDe saving throw - Success if 1d20 <= save value
-      const saveLabelMap = {
-        'wand': game.i18n.lang === 'it' ? 'Bacchetta' : 'Wand',
-        'spell': game.i18n.lang === 'it' ? 'Incantesimo' : 'Spell',
-        'stone': game.i18n.lang === 'it' ? 'Pietrificazione' : 'Stone',
-        'breath': game.i18n.lang === 'it' ? 'Soffio' : 'Breath',
-        'death': game.i18n.lang === 'it' ? 'Morte' : 'Death'
-      };
-      
-      // Get the save value from the actor's system
-      let saveValue = 0;
-      const saves = actor.system?.saves || {};
-      
-      // Map save names to compendium table keys (compendium uses 'paralysis' instead of 'stone')
-      const saveKeyMap = {
-        'stone': 'paralysis',
-        'petrification': 'paralysis',
-        'paralysis': 'paralysis',
-        'wand': 'wand',
-        'spell': 'spell',
-        'breath': 'breath',
-        'death': 'death'
-      };
-      const compendiumSaveKey = saveKeyMap[save] || save;
-      
-      // Map save names to display labels (for flavor text)
-      const saveDisplayMap = {
-        'stone': game.i18n.lang === 'it' ? 'Pietrificazione' : 'Stone',
-        'petrification': game.i18n.lang === 'it' ? 'Pietrificazione' : 'Stone',
-        'paralysis': game.i18n.lang === 'it' ? 'Pietrificazione' : 'Stone',
-        'wand': game.i18n.lang === 'it' ? 'Bacchetta' : 'Wand',
-        'spell': game.i18n.lang === 'it' ? 'Incantesimo' : 'Spell',
-        'breath': game.i18n.lang === 'it' ? 'Soffio' : 'Breath',
-        'death': game.i18n.lang === 'it' ? 'Morte' : 'Death'
-      };
-      const saveDisplayLabel = saveDisplayMap[save] || save;
-      
-      // Try to find save value in savesSpecialAbilityItems
-      if (saveValue === 0 && actor.savesSpecialAbilityItems) {
-        const saveItem = actor.savesSpecialAbilityItems.find(i => 
-          i.system?.save === save || i.system?.save === compendiumSaveKey ||
-          i.system?.type === save || i.system?.type === compendiumSaveKey ||
-          i.name?.toLowerCase().includes(save) || i.name?.toLowerCase().includes(compendiumSaveKey)
-        );
-        if (saveItem) {
-          saveValue = saveItem.system?.target || saveItem.system?.value || saveItem.system?.bonus || saveItem.system?.mod || 0;
-        }
-      }
-      
-      // Try to find save value from class in compendium
-      if (saveValue === 0) {
-        const characterClass = actor.system?.details?.class;
-        const level = actor.system?.details?.level;
-        
-        if (characterClass && level) {
-          // Class name mapping for Italian/English (bidirectional)
-          const classNameMap = {
-            'Mago': 'Magic-User',
-            'Magic-User': 'Mago',
-            'Guerriero': 'Fighter',
-            'Fighter': 'Guerriero',
-            'Chierico': 'Cleric',
-            'Cleric': 'Chierico',
-            'Ladro': 'Thief',
-            'Thief': 'Ladro',
-            'Elfo': 'Elf',
-            'Elf': 'Elfo',
-            'Nano': 'Dwarf',
-            'Dwarf': 'Nano',
-            'Halfling': 'Halfling',
-            'Bardo': 'Bard',
-            'Bard': 'Bardo',
-            'Druido': 'Druid',
-            'Druid': 'Druido',
-            'Mistico': 'Mystic',
-            'Mystic': 'Mistico',
-            'Paladino': 'Paladin',
-            'Paladin': 'Paladino',
-            'Vendicatore': 'Avenger',
-            'Avenger': 'Vendicatore',
-            'Paladino (C)': 'Paladin (C)',
-            'Vendicatore (C)': 'Avenger (C)'
-          };
-          
-          // Get both Italian and English class names
-          const classNames = [characterClass];
-          if (classNameMap[characterClass]) {
-            classNames.push(classNameMap[characterClass]);
-          }
-          
-          // Search for class item in compendium
-          let classItem = null;
-          
-          // Try to find in world items first
-          for (const className of classNames) {
-            classItem = game.items.find(i => i.name === className && i.type === 'class');
-            if (classItem) break;
-          }
-          
-          // If not found in world, try compendiums
-          if (!classItem) {
-            for (const pack of game.packs.filter(p => p.documentName === 'Item')) {
-              await pack.getIndex();
-              for (const className of classNames) {
-                const entry = pack.index.find(i => i.name === className && i.type === 'class');
-                if (entry) {
-                  classItem = await pack.getDocument(entry._id);
-                  break;
-                }
-              }
-              if (classItem) break;
-            }
-          }
-          
-          if (classItem) {
-            // Look for saves table in class item
-            const savesTable = classItem.system?.saves || classItem.system?.savingThrows;
-            if (savesTable) {
-              if (Array.isArray(savesTable)) {
-                // Find the element with the lowest level that is >= character level
-                let levelData = null;
-                let lowestLevel = Infinity;
-                for (const entry of savesTable) {
-                  if (entry.level && entry.level >= level && entry.level < lowestLevel) {
-                    lowestLevel = entry.level;
-                    levelData = entry;
-                  }
-                }
-                if (levelData) {
-                  // Try to find save value in the level data
-                  if (levelData[compendiumSaveKey] !== undefined) {
-                    saveValue = levelData[compendiumSaveKey];
-                  }
-                }
-              }
-              // Try to find save value for the specific save and level
-              if (typeof savesTable === 'object' && !Array.isArray(savesTable)) {
-                const levelData = savesTable[level] || savesTable[String(level)];
-                if (levelData && levelData[compendiumSaveKey] !== undefined) {
-                  saveValue = levelData[compendiumSaveKey];
-                } else if (savesTable[compendiumSaveKey] !== undefined) {
-                  saveValue = savesTable[compendiumSaveKey];
-                }
-              }
-            }
-          }
-        }
-      }
-      
-      // Try to find save value in other possible locations
-      if (saveValue === 0) {
-        const details = actor.system?.details || {};
-        if (details[save] !== undefined) {
-          saveValue = typeof details[save] === 'number' ? details[save] : details[save].value || details[save].bonus || details[save].mod || 0;
-        }
-      }
-      
-      if (saveValue === 0) {
-        const combat = actor.system?.combat || {};
-        if (combat[save] !== undefined) {
-          saveValue = typeof combat[save] === 'number' ? combat[save] : combat[save].value || combat[save].bonus || combat[save].mod || 0;
-        }
-      }
-      
-      // Try to find save value in mod
-      if (saveValue === 0) {
-        const mod = actor.system?.mod || {};
-        if (mod.save && mod.save[save] !== undefined) {
-          saveValue = typeof mod.save[save] === 'number' ? mod.save[save] : mod.save[save].value || mod.save[save].bonus || mod.save[save].mod || 0;
-        }
-      }
-      
-      // Try to find save value in items (special abilities)
-      if (saveValue === 0) {
-        const items = actor.items?.contents || actor.items || [];
-        const saveItems = items.filter(i => i.system?.category === 'saves' || i.type === 'save' || i.name?.toLowerCase().includes(save));
-        
-        for (const item of saveItems) {
-          if (item.system?.value !== undefined) {
-            saveValue = item.system.value;
-            break;
-          } else if (item.system?.bonus !== undefined) {
-            saveValue = item.system.bonus;
-            break;
-          } else if (item.system?.mod !== undefined) {
-            saveValue = item.system.mod;
-            break;
-          }
-        }
-      }
-      
-      
-      const formula = '1d20';
-      const rollResult = new Roll(formula);
-      await rollResult.evaluate();
-      
-      const success = rollResult.total >= saveValue;
-      const successText = success ? (game.i18n.lang === 'it' ? 'Successo' : 'Success') : (game.i18n.lang === 'it' ? 'Fallimento' : 'Failed');
-      const successIcon = success ? '<span style="color: #4CAF50; font-weight: bold; font-size: 1.2em;">✓</span>' : '<span style="color: #F44336; font-weight: bold; font-size: 1.2em;">✗</span>';
-      
-      rollResult.toMessage({
-        speaker: ChatMessage.getSpeaker({ actor }),
-        flavor: `${successIcon} ${saveDisplayLabel} ${formula} - ${successText} (${rollResult.total} >= ${saveValue})`,
-        rollMode: rollMode
-      });
-      
-      return { success };
-      
-    } else if (type === 'exploration' && skill) {
-      // Roll exploration skill (FaDe specific skills) - Success if 1d6 satisfies skill formula
-      const skillLabelMap = {
-        'findSecretDoors': game.i18n.lang === 'it' ? 'Porte Segrete' : 'Find Secret Doors',
-        'forceOpenDoors': game.i18n.lang === 'it' ? 'Forzare Porte' : 'Force Open Doors',
-        'listenAtDoors': game.i18n.lang === 'it' ? 'Origliare Porte' : 'Listen at Doors',
-        'findTraps': game.i18n.lang === 'it' ? 'Scoprire Trappole' : 'Find Traps'
-      };
-      
-      // Map skill keys to Italian item names for better matching
-      const skillNameMap = {
-        'findSecretDoors': ['Porte Segrete', 'Detect Secret Door'],
-        'forceOpenDoors': ['Forzare Porte', 'Open Door'],
-        'listenAtDoors': ['Origliare Porte', 'Listen Door'],
-        'findTraps': ['Scoprire Trappole', 'Find Trap']
-      };
-      
-      // Get the skill value from actor items
-      let skillValue = 0;
-      const possibleNames = skillNameMap[skill] || [skill];
-      const skillItem = actor.items.find(i =>
-        i.system?.skill === skill || 
-        possibleNames.some(name => i.name?.toLowerCase().includes(name.toLowerCase()))
-      );
-      if (skillItem) {
-        skillValue = skillItem.system?.target || skillItem.system?.value || skillItem.system?.bonus || skillItem.system?.mod || 0;
-      }
-      
-      const formula = '1d6';
-      const rollResult = new Roll(formula);
-      await rollResult.evaluate();
-      
-      const success = rollResult.total <= skillValue;
-      const successText = success ? (game.i18n.lang === 'it' ? 'Successo' : 'Success') : (game.i18n.lang === 'it' ? 'Fallimento' : 'Failed');
-      const successIcon = success ? '<span style="color: #4CAF50; font-weight: bold; font-size: 1.2em;">✓</span>' : '<span style="color: #F44336; font-weight: bold; font-size: 1.2em;">✗</span>';
-      
-      rollResult.toMessage({
-        speaker: ChatMessage.getSpeaker({ actor }),
-        flavor: `${successIcon} ${skillLabelMap[skill] || skill} ${formula} - ${successText} (${rollResult.total} <= ${skillValue})`,
-        rollMode: rollMode
-      });
-      
-      return { success };
-      
-    } else if (type === 'roll' && roll) {
-      // Generic roll type
-      const formula = '1d20';
-      const rollResult = new Roll(formula);
-      await rollResult.evaluate();
-      
-      rollResult.toMessage({
-        speaker: ChatMessage.getSpeaker({ actor }),
-        flavor: `🎲 ${roll.toUpperCase()} ${formula} - ${rollResult.total}`,
-        rollMode: rollMode
-      });
-      
-      return { success: true };
+      const ok = await rollAbilityCheck(actor, ability, sourceEvent);
+      return { rolled: ok };
     }
+
+    if (type === 'save' && save) {
+      const ok = await rollSavingThrow(actor, save, sourceEvent);
+      return { rolled: ok };
+    }
+
+    if (type === 'exploration' && skill) {
+      const ok = await rollExploration(actor, skill, sourceEvent);
+      return { rolled: ok };
+    }
+
+    if (type === 'roll' && roll) {
+      const formula = '1d20';
+      const rollResult = new Roll(formula);
+      await rollResult.evaluate();
+      rollResult.toMessage({
+        speaker: ChatMessage.getSpeaker({ actor }),
+        flavor: `${roll.toUpperCase()} ${formula} - ${rollResult.total}`
+      });
+      return { rolled: true };
+    }
+
+    return { rolled: false };
   } catch (err) {
     console.error('[fantastic-depths-dm-screen] Error executing roll request:', err);
-    ui.notifications.error(game.i18n.lang === 'it' ? 'Errore nell\'esecuzione del tiro' : 'Error executing roll');
-    return { success: false };
+    ui.notifications.error(game.i18n.localize('NOTIFY.RollRequestError'));
+    return { rolled: false };
   }
 }
 
@@ -453,12 +186,12 @@ Hooks.once('init', () => {
 
 });
 
-// Helper: update roll-request chat message with result icon (runs on GM side)
-async function updateRollRequestMessage(requestId, actorId, success) {
-  const successIcon = success 
-    ? '<span class="roll-result-icon" style="color: #4CAF50; font-weight: bold; font-size: 1.2em; margin-left: 10px;">✓</span>' 
+// Helper: mark roll-request row as completed (FaDe chat carries pass/fail)
+async function updateRollRequestMessage(requestId, actorId, rolled) {
+  const resultIcon = rolled
+    ? '<span class="roll-result-icon" style="color: #ffd93d; font-weight: bold; font-size: 1.2em; margin-left: 10px;" title="Rolled">●</span>'
     : '<span class="roll-result-icon" style="color: #F44336; font-weight: bold; font-size: 1.2em; margin-left: 10px;">✗</span>';
-  
+
   const chatMessage = game.messages.contents.find(m => m.content?.includes(requestId));
   if (chatMessage) {
     const $content = $(`<div>${chatMessage.content}</div>`);
@@ -466,7 +199,7 @@ async function updateRollRequestMessage(requestId, actorId, success) {
     if ($char.length > 0) {
       $char.find('.roll-request-icon').remove();
       $char.find('.roll-result-icon').remove();
-      $char.append(successIcon);
+      $char.append(resultIcon);
       await chatMessage.update({ content: $content.html() });
     }
   }
@@ -573,11 +306,10 @@ Hooks.once('ready', () => {
     const flagData = chatMessage.getFlag(MODULE_ID, 'rollResult');
     if (!flagData) return;
     
-    const { requestId, actorId, success } = chatMessage.flags[MODULE_ID];
-    
-    // Update the original request message
-    await updateRollRequestMessage(requestId, actorId, success);
-    
+    const { requestId, actorId, rolled, success } = chatMessage.flags[MODULE_ID];
+    // rolled preferred; legacy whispers used success
+    await updateRollRequestMessage(requestId, actorId, rolled ?? success);
+
     // Delete the whisper message to keep chat clean
     await chatMessage.delete();
   });
@@ -604,9 +336,6 @@ Hooks.once('ready', () => {
       return;
     }
     
-    const difficultyBonus = parseInt($icon.data('difficulty-bonus')) || 0;
-    const showDC = $icon.data('show-dc') === 'true';
-    const rollMode = $icon.data('roll-mode') || 'public';
     const requestId = $icon.data('request-id');
     let rollTypes = $icon.data('roll-types');
     // Handle both string JSON and object
@@ -615,34 +344,29 @@ Hooks.once('ready', () => {
     } else {
       rollTypes = rollTypes || [];
     }
-    const flavour = $icon.data('flavour') || '';
-    
+
     if (!actor) {
-      ui.notifications.error('Actor not found');
+      ui.notifications.error(game.i18n.localize('NOTIFY.ActorNotFound'));
       return;
     }
-    
-    // Execute rolls for each selected type and track success
-    let overallSuccess = false;
+
+    // FaDe systems own difficulty / formulas / chat; Ctrl skips FaDe dialogs
+    let anyRolled = false;
     for (const rollType of rollTypes) {
-      const result = await executeRollRequest(actor, rollType, difficultyBonus, showDC, rollMode, flavour);
-      if (result.success) overallSuccess = true;
+      const result = await executeRollRequest(actor, rollType, e.originalEvent || e);
+      if (result.rolled) anyRolled = true;
     }
-    
-    // Update the roll-request-character in the request message with success/failure icon
-    // and persist the change in the ChatMessage database so it survives F5/reload
+
+    // Mark request row as completed (pass/fail lives in FaDe chat messages)
     if (requestId) {
       if (game.user.isGM) {
-        // GM can update content directly
-        await updateRollRequestMessage(requestId, actorId, overallSuccess);
+        await updateRollRequestMessage(requestId, actorId, anyRolled);
       } else {
-        // Player creates a hidden whisper message to GM with the roll result data
-        // GM intercepts it via createChatMessage hook and updates the request message
         const gmUsers = game.users.filter(u => u.isGM).map(u => u.id);
         await ChatMessage.create({
-          content: `<div class="fd-ds-roll-result" data-request-id="${requestId}" data-actor-id="${actorId}" data-success="${overallSuccess}" style="display:none;"></div>`,
+          content: `<div class="fd-ds-roll-result" data-request-id="${requestId}" data-actor-id="${actorId}" data-rolled="${anyRolled}" style="display:none;"></div>`,
           whisper: gmUsers,
-          flags: { [MODULE_ID]: { rollResult: true, requestId, actorId, success: overallSuccess } }
+          flags: { [MODULE_ID]: { rollResult: true, requestId, actorId, rolled: anyRolled } }
         });
       }
     }
@@ -678,8 +402,6 @@ Hooks.once('ready', () => {
         const uuid = treasureLink.dataset.uuid;
         if (!uuid) return;
         
-        const lang = game.i18n.lang;
-        
         console.log(`[${MODULE_ID}] Treasure link clicked: ${uuid}`);
         
         try {
@@ -689,11 +411,11 @@ Hooks.once('ready', () => {
             console.log(`[${MODULE_ID}] Macro executed successfully`);
           } else {
             console.error(`[${MODULE_ID}] Could not find document with UUID: ${uuid}`);
-            ui.notifications.error(lang === 'it' ? 'Macro non trovata' : 'Macro not found');
+            ui.notifications.error(game.i18n.localize('NOTIFY.MacroNotFound'));
           }
         } catch (err) {
           console.error('[fantastic-depths-dm-screen] Error executing macro:', err);
-          ui.notifications.error(lang === 'it' ? 'Errore nell\'esecuzione della macro' : 'Error executing macro');
+          ui.notifications.error(game.i18n.localize('NOTIFY.MacroError'));
         }
         return;
       }
@@ -722,11 +444,11 @@ Hooks.once('ready', () => {
             console.log(`[${MODULE_ID}] RollTable drawn successfully`);
           } else {
             console.error(`[${MODULE_ID}] Could not find table with UUID: ${uuid}`);
-            ui.notifications.error('RollTable not found');
+            ui.notifications.error(game.i18n.localize('NOTIFY.RollTableNotFound'));
           }
         } catch (err) {
           console.error('[fantastic-depths-dm-screen] Error executing roll-table:', err);
-          ui.notifications.error('Errore nell\'esecuzione della roll-table');
+          ui.notifications.error(game.i18n.localize('NOTIFY.RollTableError'));
         } finally {
           // Reset processing flag after a short delay
           setTimeout(() => {
@@ -862,62 +584,72 @@ Hooks.on('getSceneControlButtons', (controls) => {
   }
 });
 
+/** Remove the on-screen DM Screen book icon from the action bar. */
+function removeActionBarButton() {
+  $('#ui-bottom .fd-ds-action-btn').remove();
+}
+
+/** Add the on-screen DM Screen book icon to the action bar (GM only, if setting enabled). */
+function addActionBarButton() {
+  if (!game.user.isGM) return;
+  if (!game.settings.get(MODULE_ID, 'showActionBarButton')) return;
+
+  try {
+    const $uiBottom = $('#ui-bottom');
+    if (!$uiBottom.length) return;
+    if ($uiBottom.find('.fd-ds-action-btn').length > 0) return;
+
+    const button = $(`
+      <div class="macro-slot fd-ds-action-btn" 
+           style="margin: 8px; flex: 0 0 auto; pointer-events: auto;">
+        <button class="flexcol fd-ds-btn"
+                data-tooltip="${game.i18n.localize('BUTTON.Title')}"
+                style="width: 50px; height: 50px; pointer-events: auto; border-radius: 24px 24px 5px 5px; background-color: rgba(11, 10, 19, 0.4);"
+                onmouseover="this.style.backgroundColor='#5b4f17'; this.querySelector('i').style.color='#FFD700'"
+                onmouseout="this.style.backgroundColor='rgba(11, 10, 19, 0.4)'; this.querySelector('i').style.color=''">
+          <i class="fas fa-book-open" style="font-size: 24px;"></i>
+        </button>
+      </div>
+    `);
+
+    button.find('.fd-ds-btn').on('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!globalThis.activePGPXApp || !globalThis.activePGPXApp.rendered) {
+        globalThis.activePGPXApp = new PGPXManagerApp();
+        globalThis.activePGPXApp.render(true);
+      } else {
+        globalThis.activePGPXApp.bringToFront();
+      }
+    });
+
+    const $fadedUi = $uiBottom.find('.faded-ui');
+    if ($fadedUi.length) {
+      $fadedUi.before(button);
+    } else {
+      const $hotbar = $uiBottom.find('.hotbar');
+      if ($hotbar.length) {
+        $hotbar.before(button);
+      } else {
+        $uiBottom.append(button);
+      }
+    }
+  } catch (err) {
+    console.error('[fantastic-depths-dm-screen] Error adding action bar button:', err);
+  }
+}
+
+/** Apply show/hide for the on-screen book icon from the client setting. */
+function refreshActionBarButton() {
+  removeActionBarButton();
+  addActionBarButton();
+}
+
 // Add DM Screen button to main action bar (top center) - Aggiunge pulsante DM Screen alla action-bar principale (in alto al centro)
 Hooks.on('ready', () => {
   if (!game.user.isGM) return;
-  
   // Wait for UI to be fully loaded
-  setTimeout(() => {
-    try {
-      // Find the ui-bottom container (bottom footer)
-      const $uiBottom = $('#ui-bottom');
-      if (!$uiBottom.length) return;
-      
-      // Check if button already exists
-      if ($uiBottom.find('.fd-ds-action-btn').length > 0) return;
-      
-      // Create the button with DM Screen icon using hotbar slot classes
-      const button = $(`
-        <div class="macro-slot fd-ds-action-btn" 
-             style="margin: 8px; flex: 0 0 auto; pointer-events: auto;">
-          <button class="flexcol fd-ds-btn"
-                  data-tooltip="${game.i18n.localize('BUTTON.Title')}"
-                  style="width: 50px; height: 50px; pointer-events: auto; border-radius: 24px 24px 5px 5px; background-color: rgba(11, 10, 19, 0.4);"
-                  onmouseover="this.style.backgroundColor='#5b4f17'; this.querySelector('i').style.color='#FFD700'"
-                  onmouseout="this.style.backgroundColor='rgba(11, 10, 19, 0.4)'; this.querySelector('i').style.color=''">
-            <i class="fas fa-book-open" style="font-size: 24px;"></i>
-          </button>
-        </div>
-      `);
-      
-      // Add click handler directly to the inner button
-      button.find('.fd-ds-btn').on('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!globalThis.activePGPXApp || !globalThis.activePGPXApp.rendered) {
-          globalThis.activePGPXApp = new PGPXManagerApp();
-          globalThis.activePGPXApp.render(true);
-        } else {
-          globalThis.activePGPXApp.bringToFront();
-        }
-      });
-      
-      // Insert button before the faded-ui flexrow (hotbar)
-      const $fadedUi = $uiBottom.find('.faded-ui');
-      if ($fadedUi.length) {
-        $fadedUi.before(button);
-      } else {
-        const $hotbar = $uiBottom.find('.hotbar');
-        if ($hotbar.length) {
-          $hotbar.before(button);
-        } else {
-          $uiBottom.append(button);
-        }
-      }
-    } catch (err) {
-      console.error('[fantastic-depths-dm-screen] Error adding action bar button:', err);
-    }
-  }, 1000);
+  setTimeout(() => addActionBarButton(), 1000);
 });
 
 // Debounce timer per evitare render multipli ravvicinati
@@ -1055,15 +787,6 @@ function setupCombatHooks() {
     if (!game.user.isGM) return;
     console.log(`[fantastic-depths-dm-screen] deleteCombat | combatId: ${globalThis.combatId}, combat.id: ${combat.id}, combatXP: ${globalThis.combatXP}, combatStarted: ${globalThis.combatStarted}`);
     if (globalThis.combatId === combat.id && globalThis.combatXP > 0 && globalThis.combatStarted) {
-      // Check if carousel flagged this combat to skip XP (user chose "No" on XP dialog)
-      if (combat.getFlag?.('fantastic-depths-combat-carousel', 'skipXP')) {
-        console.log(`[fantastic-depths-dm-screen] deleteCombat | skipXP flag set — resetting without XP`);
-        globalThis.combatXP = 0;
-        globalThis.combatId = null;
-        globalThis.combatStarted = false;
-        globalThis.combatants.clear();
-        return;
-      }
       // Wait a tick for FaDe's end-combat chat message to appear
       await new Promise(r => setTimeout(r, 300));
       // Check if FaDe posted an "end combat" chat message (only End Combat does this, not Delete Encounter)
@@ -1150,6 +873,12 @@ async function processCombatEnd(combat) {
   // If no XP to apply, do nothing - Se non ci sono PX da applicare, non fare nulla
   if (combatXPToApply <= 0) {
     console.log(`[${MODULE_ID}] processCombatEnd | No XP to apply (combatXPToApply: ${combatXPToApply}), returning.`);
+    return;
+  }
+
+  // Setting: show XP UI when combat ends (default true)
+  if (!game.settings.get(MODULE_ID, 'showXPOnCombatEnd')) {
+    console.log(`[${MODULE_ID}] processCombatEnd | showXPOnCombatEnd disabled, skipping XP UI (xp=${combatXPToApply})`);
     return;
   }
   
@@ -1328,8 +1057,8 @@ async function createTreasureLinksChatMessage(treasureLinks, monsterNames) {
 function registerSettings() {
   // Pending XP storage (per character) - Archiviazione PX in attesa (per personaggio)
   game.settings.register(MODULE_ID, 'pendingXP', {
-    name: 'PX in Attesa',
-    hint: 'Storage per i PX in attesa dei personaggi',
+    name: 'SETTINGS.PendingXP.Name',
+    hint: 'SETTINGS.PendingXP.Hint',
     scope: 'world',
     config: false,
     type: Object,
@@ -1338,8 +1067,8 @@ function registerSettings() {
   
   // Global XP storage (total XP from combat) - Archiviazione PX globale (PX totali dal combattimento)
   game.settings.register(MODULE_ID, 'globalXP', {
-    name: 'XP Globale',
-    hint: 'XP totale del combattimento corrente',
+    name: 'SETTINGS.GlobalXP.Name',
+    hint: 'SETTINGS.GlobalXP.Hint',
     scope: 'world',
     config: false,
     type: Number,
@@ -1348,19 +1077,58 @@ function registerSettings() {
   
   // Default tab - Tab predefinita
   game.settings.register(MODULE_ID, 'defaultTab', {
-    name: 'Tab Predefinito',
-    hint: 'Tab aperta di default all\'avvio',
+    name: 'SETTINGS.DefaultTab.Name',
+    hint: 'SETTINGS.DefaultTab.Hint',
     scope: 'client',
     config: true,
     restricted: true,
     type: String,
     choices: {
-      'party': '🎭 Party',
-      'award': '💰 Assegna PX',
-      'pending': '⏳ PX in Attesa',
-      'generator': '⚔️ Genera PG'
+      party: 'SETTINGS.DefaultTab.Party',
+      award: 'SETTINGS.DefaultTab.Award',
+      pending: 'SETTINGS.DefaultTab.Pending',
+      generator: 'SETTINGS.DefaultTab.Generator'
     },
     default: 'party'
+  });
+
+  // Party membership source: Actor folder vs Fantastic Depths Party Tracker
+  game.settings.register(MODULE_ID, 'partySource', {
+    name: 'SETTINGS.PartySource.Name',
+    hint: 'SETTINGS.PartySource.Hint',
+    scope: 'world',
+    config: true,
+    restricted: true,
+    type: String,
+    choices: {
+      folder: 'SETTINGS.PartySource.Folder',
+      tracker: 'SETTINGS.PartySource.Tracker'
+    },
+    default: 'folder',
+    requiresReload: true
+  });
+
+  // Show/hide the on-screen DM Screen book icon (per client, GM-only config)
+  game.settings.register(MODULE_ID, 'showActionBarButton', {
+    name: 'SETTINGS.ShowActionBarButton.Name',
+    hint: 'SETTINGS.ShowActionBarButton.Hint',
+    scope: 'client',
+    config: true,
+    restricted: true,
+    type: Boolean,
+    default: true,
+    onChange: () => refreshActionBarButton()
+  });
+
+  // Open/apply Award XP when combat ends with XP to award
+  game.settings.register(MODULE_ID, 'showXPOnCombatEnd', {
+    name: 'SETTINGS.ShowXPOnCombatEnd.Name',
+    hint: 'SETTINGS.ShowXPOnCombatEnd.Hint',
+    scope: 'client',
+    config: true,
+    restricted: true,
+    type: Boolean,
+    default: true
   });
   
   // Unit system setting (Metric vs Imperial) - Impostazione sistema unità (Metrico vs Imperiale)
@@ -1433,28 +1201,28 @@ async function preloadTemplates() {
 
 // Ensure Party and Seguaci/Retainers folders exist - Assicura che le cartelle Party e Seguaci/Retainers esistano
 async function ensureFolders() {
-  const isItalian = (game.i18n.lang ?? 'en') === 'it';
-  const retainerFolderName = isItalian ? 'Seguaci' : 'Retainers';
+  const partyFolderName = game.i18n.localize('FOLDER.Party');
+  const retainerFolderName = game.i18n.localize('FOLDER.Retainers');
 
-  // Party folder
-  let partyFolder = game.folders?.find(f => 
-    f.type === 'Actor' && f.name.toLowerCase() === 'party'
+  // Party folder (match either localized or English name)
+  let partyFolder = game.folders?.find(f =>
+    f.type === 'Actor' && /^(party)$/i.test(f.name)
   );
-  
+
   if (!partyFolder && game.user.isGM) {
     partyFolder = await Folder.create({
-      name: 'Party',
+      name: partyFolderName,
       type: 'Actor',
       parent: null
     });
-    ui.notifications.info(game.i18n.format('NOTIFY.FolderCreated', { name: 'Party' }));
+    ui.notifications.info(game.i18n.format('NOTIFY.FolderCreated', { name: partyFolderName }));
   }
-  
+
   // Retainers/Seguaci folder
-  let seguaciFolder = game.folders?.find(f => 
+  let seguaciFolder = game.folders?.find(f =>
     f.type === 'Actor' && /^(seguaci|retainers)$/i.test(f.name)
   );
-  
+
   console.log(`[fantastic-depths-dm-screen] ensureFolders | lang=${game.i18n.lang} | targetName=${retainerFolderName} | found=${seguaciFolder?.name ?? 'NONE'} | isGM=${game.user.isGM}`);
 
   if (!seguaciFolder && game.user.isGM) {

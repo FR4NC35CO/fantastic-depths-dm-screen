@@ -194,28 +194,24 @@ export function generateDwarfName(sex) {
 }
 
 /**
- * Generate name based on class/race - Genera nome basato su classe/razza
- * @param {string} className - The class name - Il nome della classe
- * @param {string} sex - 'M' for male, 'F' for female, null/undefined for random - 'M' per maschio, 'F' per femmina, null/undefined per casuale
+ * Generate name based on species (preferred) or legacy class name.
+ * @param {string} speciesOrClass - Species (Elf/Dwarf/Halfling/Human) or legacy class name
+ * @param {string} sex - 'M' for male, 'F' for female, null/undefined for random
  */
-export function generateName(className, sex) {
-  const normalized = (className || '').toLowerCase();
-  
-  // Elves
-  if (normalized.includes('elfo') || normalized.includes('elf')) {
+export function generateName(speciesOrClass, sex) {
+  const raw = (speciesOrClass || '').trim();
+  const normalized = raw.toLowerCase();
+
+  // Prefer non-localized species values from class.system.species
+  if (raw === 'Elf' || normalized === 'elf' || normalized.includes('elfo')) {
     return generateElfName(sex);
   }
-  
-  // Halflings
-  if (normalized.includes('halfling')) {
+  if (raw === 'Halfling' || normalized.includes('halfling')) {
     return generateHalflingName(sex);
   }
-  
-  // Dwarves
-  if (normalized.includes('nano') || normalized.includes('dwarf')) {
+  if (raw === 'Dwarf' || normalized === 'dwarf' || normalized.includes('nano')) {
     return generateDwarfName(sex);
   }
-  
-  // Default to human names for other classes
+
   return generateHumanName(sex);
 }

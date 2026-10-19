@@ -168,7 +168,7 @@ export class PXManager {
       // Check for missing class - Controlla classe mancante
       const className = actor.system?.details?.class || actor.system?.details?.className || '';
       if (!className || className.trim() === '') {
-        ui.notifications.warn(`Attenzione! ${actor.name} non ha una classe assegnata.`);
+        ui.notifications.warn(game.i18n.format('NOTIFY.ActorMissingClass', { name: actor.name }));
         results.skipped.push(actorId);
         continue;
       }

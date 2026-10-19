@@ -10,10 +10,11 @@ export async function executeAcrobaticsCheck() {
     return ui.notifications.warn(game.i18n.localize('ACROBATICS.SelectToken'));
   }
 
-  // Check if character is a Mystic (Acrobatics is a Mystic ability)
-  const className = actor.system?.details?.class ?? '';
-  const isMystic = /mystic|mistico/i.test(className);
-  if (!isMystic) {
+  // Check if character is a Mystic via non-localized class key
+  const classKey = (actor.system?.details?.classKey
+    || actor.items.find(i => i.type === 'class')?.system?.key
+    || '').toUpperCase();
+  if (classKey !== 'MY') {
     return ui.notifications.warn(game.i18n.localize('ACROBATICS.MysticOnly'));
   }
 
@@ -64,5 +65,8 @@ export async function executeAcrobaticsCheck() {
     rollMode: game.settings.get("core", "messageMode")
   });
 
-  console.log(`${actor.name} | d100: ${rollTotal} | Obiettivo: ${target} | ${isSuccess ? "Successo" : "Fallimento"}`);
+  const resultLabel = isSuccess
+    ? game.i18n.localize('ABILITY.Success')
+    : game.i18n.localize('ABILITY.Failure');
+  console.log(`${actor.name} | d100: ${rollTotal} | target: ${target} | ${resultLabel}`);
 }
