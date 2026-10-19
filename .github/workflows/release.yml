@@ -153,10 +153,9 @@ jobs:
           tag: latest
           bodyfile: release_notes.txt
 
-      # Not yet listed on Foundry's package library — re-enable when registered.
-      # - name: Publish Module to FoundryVTT Website
-      #   if: env.is_valid == 'true' && !github.event.release.unpublished && !github.event.release.prerelease
-      #   uses: cs96and/FoundryVTT-release-package@v1
-      #   with:
-      #     package-token: ${{ secrets.FOUNDRY_PACKAGE_TOKEN }}
-      #     manifest-url: https://github.com/${{ github.repository }}/releases/download/${{ env.VERSION }}/module.json
+      - name: Publish Module to FoundryVTT Website
+        if: env.is_valid == 'true' && !github.event.repository.fork && !github.event.release.unpublished && !github.event.release.prerelease
+        uses: cs96and/FoundryVTT-release-package@v1
+        with:
+          package-token: ${{ secrets.FOUNDRY_PACKAGE_TOKEN }}
+          manifest-url: https://github.com/${{ github.repository }}/releases/download/${{ env.VERSION }}/module.json
